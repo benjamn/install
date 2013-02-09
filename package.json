@@ -1,0 +1,34 @@
+{
+  "author": {
+    "name": "Ben Newman",
+    "email": "bn@cs.stanford.edu"
+  },
+  "name": "install",
+  "description": "Minimal JavaScript module loader",
+  "keywords": [
+    "modules",
+    "require",
+    "commonjs",
+    "exports",
+    "browser",
+    "packaging",
+    "packager",
+    "install"
+  ],
+  "version": "0.1.1",
+  "homepage": "http://github.com/benjamn/install",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/benjamn/install.git"
+  },
+  "main": "install.js",
+  "scripts": {
+    "test": "whiskey test/run.js"
+  },
+  "optionalDependencies": {
+    "whiskey": "0.6.x"
+  },
+  "engines": {
+    "node": ">= 0.6"
+  }
+}
