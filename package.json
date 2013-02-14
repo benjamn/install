@@ -15,13 +15,13 @@
     "packager",
     "install"
   ],
-  "version": "0.1.1",
+  "version": "0.1.2",
   "homepage": "http://github.com/benjamn/install",
   "repository": {
     "type": "git",
     "url": "git://github.com/benjamn/install.git"
   },
-  "main": "install.js",
+  "main": "main.js",
   "scripts": {
     "test": "whiskey test/run.js"
   },

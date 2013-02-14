@@ -1,4 +1,5 @@
-require("../install");
+var main = require("../main");
+main.makeGlobal();
 
 function finish(t) {
     process.nextTick(t.finish.bind(t));
@@ -260,5 +261,14 @@ exports.testRedefineModuleExports = function(t, assert) {
         assert.strictEqual(require("n-null"), null);
         assert.strictEqual(require("n-undef"), void(0));
         finish(t);
+    });
+};
+
+exports.testGetCode = function(t, assert) {
+    main.getCode(function(err, code) {
+        assert.equal(err, null);
+        assert.notEqual(code.indexOf("install"), -1);
+        assert.strictEqual(code, main.getCodeSync());
+        t.finish();
     });
 };
