@@ -205,7 +205,7 @@ exports.testVeryLongQueue = function(t, assert) {
 exports.testRelativeRequire = function(t, assert) {
     var value = {};
 
-    install("path/to/n", function(require, exports) {
+    function n(require, exports) {
         assert.strictEqual(require("./o").value, value);
         assert.strictEqual(require("../to/o").value, value);
         assert.strictEqual(require("../../path/to/o").value, value);
@@ -217,8 +217,14 @@ exports.testRelativeRequire = function(t, assert) {
         assert.strictEqual(require("../to/../to/o").value, value);
         assert.strictEqual(require("../to/../../path/to/o").value, value);
 
+        assert.deepEqual(
+            main.getRequiredIDs("path/to/n", n.toString()),
+            ["path/to/o"]);
+
         finish(t);
-    });
+    }
+
+    install("path/to/n", n);
 
     install("path/to/o", function(require, exports) {
         exports.value = value;
