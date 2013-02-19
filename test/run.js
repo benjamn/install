@@ -123,6 +123,45 @@ exports.testCallMethodStyle = function(t, assert) {
     install("i", { exports: { foo: 42 }});
 };
 
+exports.testUnmetStyle = function(t, assert) {
+    function uselessToString() {
+        assert.ok(false, ".toString should not be called when .unmet is defined");
+    }
+
+    install("h2", {
+        unmet: { h0: true, h1: true },
+        toString: uselessToString,
+
+        call: function(self, require, exports, module) {
+            function checkName(id) {
+                assert.strictEqual(require(id).name, id);
+            }
+
+            exports.name = module.id;
+
+            checkName("h0");
+            checkName("h1");
+            checkName("h2");
+        }
+    });
+
+    install("h1", { exports: { name: "h1" }});
+
+    install({
+        unmet: { h2: true },
+        toString: uselessToString,
+        call: function(self, require) {
+            var h2 = "h2";
+            assert.strictEqual(require(h2).name, "h2");
+            finish(t);
+        }
+    });
+
+    install("h0", function(require, exports) {
+        exports.name = "h0";
+    });
+};
+
 exports.testCircularRequirement = function(t, assert) {
     install("j", function(require, exports) {
         var k = require("k");
