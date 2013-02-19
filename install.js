@@ -126,7 +126,7 @@
     //
     // Note that the above definition is recursive.
     function ready(module) {
-        var unmet, code, match, id, result = true;
+        var deps, code, match, id, result = true;
 
         if (!module.seen &&
             !hasOwn.call(module, "exports"))
@@ -137,13 +137,13 @@
             // don't want to waste time scanning, just override its
             // `.toString` function to return something equivalent (with
             // regard to dependencies) but shorter.
-            unmet = module.unmet;
-            if (!unmet) {
+            deps = module.deps;
+            if (!deps) {
                 code = module + "";
-                unmet = module.unmet = {};
+                deps = module.deps = {};
                 requireExp.lastIndex = 0;
                 while ((match = requireExp.exec(code)))
-                    unmet[absolutize(match[1], module.id)] = true;
+                    deps[absolutize(match[1], module.id)] = true;
             }
 
             // There may be cycles in the dependency graph, so we must be
@@ -153,14 +153,14 @@
             // can immediately return `true`.
             module.seen = true;
 
-            for (id in unmet) {
-                if (hasOwn.call(unmet, id)) {
+            for (id in deps) {
+                if (hasOwn.call(deps, id)) {
                     // Once a dependency is determined to be satisfied, we
-                    // remove its identifier from `module.unmet`, so that we
+                    // remove its identifier from `module.deps`, so that we
                     // can avoid considering it again if `ready` is called
                     // multiple times.
                     if (hasOwn.call(installed, id) && ready(installed[id])) {
-                        delete unmet[id];
+                        delete deps[id];
                     // If any dependency is missing or not `ready`, then the
                     // current module is not yet `ready`. The `break` is not
                     // strictly necessary here, but immediately terminating

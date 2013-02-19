@@ -123,13 +123,13 @@ exports.testCallMethodStyle = function(t, assert) {
     install("i", { exports: { foo: 42 }});
 };
 
-exports.testUnmetStyle = function(t, assert) {
+exports.testDepsStyle = function(t, assert) {
     function uselessToString() {
-        assert.ok(false, ".toString should not be called when .unmet is defined");
+        assert.ok(false, ".toString should not be called when .deps is defined");
     }
 
     install("h2", {
-        unmet: { h0: true, h1: true },
+        deps: { h0: true, h1: true },
         toString: uselessToString,
 
         call: function(self, require, exports, module) {
@@ -148,7 +148,7 @@ exports.testUnmetStyle = function(t, assert) {
     install("h1", { exports: { name: "h1" }});
 
     install({
-        unmet: { h2: true },
+        deps: { h2: true },
         toString: uselessToString,
         call: function(self, require) {
             var h2 = "h2";
