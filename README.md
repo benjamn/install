@@ -5,6 +5,19 @@ The [CommonJS module syntax](http://wiki.commonjs.org/wiki/Modules/1.1) is one o
 
 Much less of a consensus has developed around the best way to deliver CommonJS modules to a web browser, where the synchronous semantics of `require` pose a non-trivial implementation challenge. This module loader contributes to that confusion, yet also demonstrates that a amply-featured module loader need not stretch into the hundreds or thousands of lines.
 
+Installation
+---
+From NPM:
+
+    npm install install
+
+From GitHub:
+
+    cd path/to/node_modules
+    git clone git://github.com/benjamn/install.git
+    cd install
+    npm install .
+
 Usage
 ---
 
