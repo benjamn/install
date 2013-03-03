@@ -1,3 +1,4 @@
+var assert = require("assert");
 var fs = require("fs");
 var path = require("path");
 var file = path.join(__dirname, "install.js");
@@ -6,8 +7,40 @@ exports.makeGlobal = function() {
     require("./install");
 };
 
+function Reader(file) {
+    var self = this;
+    assert.ok(self instanceof Reader);
+
+    var args;
+    var qhead = {};
+    var qtail = qhead;
+
+    fs.readFile(file, "utf8", function(err, data) {
+        args = [err, data];
+        process.nextTick(flush);
+    });
+
+    function flush() {
+        var next = qhead.next
+        if (next && args) {
+            qhead = next;
+            process.nextTick(flush);
+            next.cb.apply(null, args);
+        }
+    }
+
+    self.addCallback = function(cb) {
+        qtail = qtail.next = { cb: cb };
+        if (qhead.next === qtail)
+            process.nextTick(flush);
+    };
+}
+
+var reader;
+
 exports.getCode = function(callback) {
-    fs.readFile(file, "utf8", callback);
+    reader = reader || new Reader(file);
+    reader.addCallback(callback);
 };
 
 exports.getCodeSync = function() {
