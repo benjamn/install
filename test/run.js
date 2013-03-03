@@ -314,6 +314,17 @@ exports.testGetCode = function(t, assert) {
         assert.equal(err, null);
         assert.notEqual(code.indexOf("install"), -1);
         assert.strictEqual(code, main.getCodeSync());
-        t.finish();
+
+        finish(t);
+    });
+};
+
+exports.testRenameCode = function(t, assert) {
+    main.renameCode("iginstall", function(err, code) {
+        assert.equal(err, null);
+        assert.notEqual(code.indexOf("iginstall"), -1);
+        assert.strictEqual(code, main.renameCodeSync("iginstall"));
+
+        finish(t);
     });
 };

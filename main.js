@@ -43,8 +43,28 @@ exports.getCode = function(callback) {
     reader.addCallback(callback);
 };
 
-exports.getCodeSync = function() {
+function rename(installName, code) {
+    if (installName !== "install")
+        code = code.replace(
+            /\bglobal\.install\b/g,
+            "global." + installName);
+    return code;
+}
+
+exports.renameCode = function(installName, callback) {
+    reader = reader || new Reader(file);
+    reader.addCallback(function(err, data) {
+        callback(err, rename(installName, data));
+    });
+};
+
+function getCodeSync() {
     return fs.readFileSync(file, "utf8");
+}
+exports.getCodeSync = getCodeSync;
+
+exports.renameCodeSync = function(installName) {
+    return rename(installName, getCodeSync());
 };
 
 // Not perfect, but we need to match the behavior of install.js.
