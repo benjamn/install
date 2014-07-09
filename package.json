@@ -26,7 +26,7 @@
     "test": "whiskey test/run.js"
   },
   "optionalDependencies": {
-    "whiskey": "0.6.x"
+    "whiskey": "0.8.x"
   },
   "engines": {
     "node": ">= 0.6"
