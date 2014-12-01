@@ -23,10 +23,10 @@
   },
   "main": "main.js",
   "scripts": {
-    "test": "whiskey test/run.js"
+    "test": "mocha test/run.js"
   },
-  "optionalDependencies": {
-    "whiskey": "0.6.x"
+  "devDependencies": {
+    "mocha": "~2.0.1"
   },
   "engines": {
     "node": ">= 0.6"
