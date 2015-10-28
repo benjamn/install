@@ -23,10 +23,12 @@
   },
   "main": "install.js",
   "scripts": {
+    "prepublish": "uglifyjs install.js -c -m > install.min.js",
     "test": "mocha --reporter spec --full-trace test/run.js"
   },
   "devDependencies": {
-    "mocha": "~2.3.3"
+    "mocha": "^2.3.3",
+    "uglifyjs": "^2.4.10"
   },
   "engines": {
     "node": ">= 0.10"
