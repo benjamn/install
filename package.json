@@ -16,6 +16,7 @@
     "install"
   ],
   "version": "0.2.1",
+  "license": "MIT",
   "homepage": "http://github.com/benjamn/install",
   "repository": {
     "type": "git",
