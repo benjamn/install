@@ -24,10 +24,11 @@
   },
   "main": "install.js",
   "scripts": {
-    "prepublish": "uglifyjs install.js -c -m > install.min.js",
+    "prepublish": "scripts/prepublish.sh",
     "test": "mocha --reporter spec --full-trace test/run.js"
   },
   "devDependencies": {
+    "docco": "^0.7.0",
     "mocha": "^2.3.3",
     "uglifyjs": "^2.4.10"
   },
