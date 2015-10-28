@@ -1,189 +1,327 @@
-(function(global, undefined) {
-    // Defining the `install` function more than once leads to mayhem, so
-    // return immedately if a property called `install` is already defined on
-    // the global object.
-    if (global.install)
-        return;
+(function (global, undefined) {
+  if (global.makeInstaller) {
+    return;
+  }
 
-    // The `installed` object maps absolute module identifiers to module
-    // definitions available for requirement.
-    var installed = {};
+  function makeInstaller(options) {
+    var root = new File({});
 
-    // I make frequent use of `hasOwn.call` to test for the presence of object
-    // properties without traversing the prototype chain.
-    var hasOwn = installed.hasOwnProperty;
-
-    // Anonymous modules are pushed onto a queue so that (when ready) they can
-    // be executed in order of installation.
-    var qhead = {};
-    var qtail = qhead;
-
-    // Define the `install` function globally.
-    global.install = function(id, module) {
-        // To install a named module, pass an absolute module identifier
-        // string followed by a module definition. Note that named modules are
-        // not evaluated until they are required for the first time.
-        if (typeof id === "string" && module) {
-            if (!hasOwn.call(installed, id)) {
-                installed[module.id = id] = module;
-                flushQueue();
-            }
-        // To install an anonymous module, pass a module definition without an
-        // identifier. Anonymous modules are executed in order of
-        // installation, as soon as their requirements have been installed.
-        } else if (id && typeof id.call === "function") {
-            qtail = qtail.next = { module: id };
-            if (qhead.next === qtail)
-                flushQueue();
-        }
+    // Set up a simple queue for tracking required modules with unmet
+    // dependencies. See also queueAppend and queueFlush.
+    var q = root.q = {};
+    q.h = q.t = {}; // Queue head, queue tail.
+    // Configurable function for deferring queue flushes.
+    q.d = options && options.defer || function (fn) {
+      setTimeout(fn, 0);
     };
 
-    // The `require` function takes an absolute module identifier and returns
-    // the `exports` object defined by that module. An error is thrown if no
-    // module with the given identifier is installed.
-    function require(moduleId) {
-        if (hasOwn.call(installed, moduleId)) {
-            var module = installed[moduleId];
-            if (!hasOwn.call(module, "exports")) {
-                // Each module receives a version of `require` that knows how
-                // to `absolutize` relative module identifiers with respect to
-                // `moduleId`.
-                module.call(global, function(id) {
-                    return require(absolutize(id, moduleId));
-                }, module.exports = {}, module);
-            }
-            // Note that `module.exports` may be redefined during evaluation
-            // of the module.
-            return module.exports;
+    return function install(tree) {
+      if (isObject(tree)) {
+        fileMergeContents(root, tree);
+        queueFlush(root.q);
+      }
+      return root.r;
+    };
+  }
+
+  global.makeInstaller = makeInstaller;
+
+  if (typeof exports === "object") {
+    exports.makeInstaller = makeInstaller;
+  }
+
+  var extensions = ["", ".js", ".json"];
+  var MISSING = {};
+  var hasOwn = MISSING.hasOwnProperty;
+  var Ap = Array.prototype;
+
+  function getOwn(obj, key) {
+    return hasOwn.call(obj, key) && obj[key];
+  }
+
+  function isObject(value) {
+    return value && typeof value === "object";
+  }
+
+  function isFunction(value) {
+    return typeof value === "function";
+  }
+
+  function isString(value) {
+    return typeof value === "string";
+  }
+
+  function queueAppend(q, file) {
+    // Property names shortened to shave bytes: .t means .tail, .h means
+    // .head, .n means .next, and .f means .file.
+    q.t = q.t.n = { f: file };
+    if (q.h.n === q.t) {
+      // If the queue contains only one File (the one we just added), go
+      // ahead and schedule a flush.
+      queueFlush(q);
+    }
+  }
+
+  function queueFlush(q) {
+    // The q.p property is set to indicate a flush is pending.
+    q.p || (q.p = true, q.d(function () {
+      q.p = undefined;
+      var next = q.h.n;
+      if (next && fileReady(next.f)) {
+        queueFlush(q); // Schedule the next flush.
+        q.h = next;
+        fileEvaluate(next.f);
+      }
+    }));
+  }
+
+  // These unbound{Require,Ensure} functions need to be bound to File
+  // objects before they can be used. See makeRequire.
+
+  function unboundRequire(id) {
+    var result = fileEvaluate(fileResolve(this, id));
+    if (result === MISSING) {
+      throw new Error("Cannot find module '" + id + "'");
+    }
+    return result;
+  }
+
+  function unboundEnsure() {
+    // Flatten arguments into an array containing relative module
+    // identifier strings and an optional callback function, then coerce
+    // that array into a callback function with a .d property.
+    var flatArgs = Ap.concat.apply(Ap, arguments);
+    var callback = ensureObjectOrFunction(flatArgs);
+
+    // Note that queueAppend schedules a flush if there are no other
+    // callbacks waiting in the queue.
+    queueAppend(this.q, new File(callback, this));
+  }
+
+  function makeRequire(file) {
+    var require = unboundRequire.bind(file);
+    require.ensure = unboundEnsure.bind(file);
+    // TODO Consider adding require.promise.
+    return require;
+  }
+
+  // File objects represent either directories or modules that have been
+  // installed via Meteor.install. When a File respresents a directory,
+  // its .c (contents) property is an object containing the names of the
+  // files (or directories) that it contains. When a File represents a
+  // module, its .c property is a function that can be invoked with the
+  // appropriate (require, exports, module) arguments to evaluate the
+  // module. The .p (parent) property of a File is either a directory File
+  // or null. Note that a child may claim another File as its parent even
+  // if the parent does not have an entry for that child in its .c object.
+  // This is important for implementing anonymous files, and preventing
+  // child modules from using ../relative/identifier syntax to examine
+  // unrelated modules.
+  function File(contents, /*optional:*/ parent, name) {
+    var file = this;
+
+    // Link to the parent file.
+    file.p = parent = parent || null;
+
+    if (name) {
+      // If this file was created with name, join it with parent.id to
+      // generate a module identifier.
+      file.id = (parent && parent.id || "") + "/" + name;
+    }
+
+    // Queue for tracking required modules with unmet dependencies,
+    // inherited from the parent.
+    file.q = parent && parent.q;
+
+    // Each directory has its own bound version of the require function
+    // that can resolve relative identifiers. Non-directory Files inherit
+    // the require function of their parent directories, so we don't have
+    // to create a new require function every time we evaluate a module.
+    file.r = isObject(contents)
+      ? makeRequire(file)
+      : parent && parent.r;
+
+    // TODO Compute file.id / module.id.
+
+    // Set the initial value of file.c (the "contents" of the File).
+    fileMergeContents(file, contents);
+
+    // When the file is a directory, file.ready is an object mapping
+    // module identifiers to boolean ready statuses. This information can
+    // be shared by all files in the directory, because module resolution
+    // always has the same results for all files in a given directory.
+    file.ready = fileIsDirectory(file) && {};
+  }
+
+  // A file is ready if all of its dependencies are installed and ready.
+  function fileReady(file) {
+    var result = !! file;
+    var module = file && file.c;
+    var deps = isFunction(module) && module.d;
+    if (deps && ! getOwn(module, "seen")) {
+      module.seen = true;
+      var parentReadyCache = file.p.ready;
+      result = Object.keys(deps).every(function (dep) {
+        // By storing the results of these lookups in parentReadyCache,
+        // we benefit when any other file in the same directory resolves
+        // the same identifier.
+        return parentReadyCache[dep] =
+          parentReadyCache[dep] ||
+          fileReady(fileResolve(file.p, dep));
+      });
+      module.seen = undefined;
+    }
+    return result;
+  }
+
+  function fileEvaluate(file) {
+    var module = file && file.c;
+    if (isFunction(module)) {
+      if (! hasOwn.call(module, "exports")) {
+        module.id = file.id;
+        module.call(global, file.r, module.exports = {}, module);
+      }
+      return module.exports;
+    }
+    return MISSING;
+  }
+
+  function fileIsDirectory(file) {
+    return isObject(file.c);
+  }
+
+  function fileMergeContents(file, contents) {
+    if ((contents = ensureObjectOrFunction(contents))) {
+      var fileContents = file.c = file.c || (
+        isFunction(contents) ? contents : {}
+      );
+
+      if (isObject(contents) && fileIsDirectory(file)) {
+        Object.keys(contents).forEach(function (key) {
+          var child = getOwn(fileContents, key);
+          if (child) {
+            fileMergeContents(child, contents[key]);
+          } else {
+            fileContents[key] = new File(contents[key], file, key);
+          }
+        });
+      }
+    }
+  };
+
+  function ensureObjectOrFunction(contents) {
+    // If contents is an array of strings and functions, return the last
+    // function with a .d property containing all the strings.
+    if (Array.isArray(contents)) {
+      var deps = {};
+      var func;
+
+      contents.forEach(function (item) {
+        if (isString(item)) {
+          deps[item] = false; // Initially unsatisfied.
+        } else if (isFunction(item)) {
+          func = item;
         }
-        // Since modules are evaluated only after all their requirements have
-        // been installed, this error generally means that `require` was
-        // called with an identifier that was not seen (or was not understood)
-        // by the dependency scanner.
-        throw new Error('module "' + moduleId + '" not installed');
+      });
+
+      // If no function was found in the array, provide a default function
+      // that simply requires each dependency (really common case).
+      contents = func || function (module, require) {
+        Object.keys(deps).forEach(require);
+      };
+
+      contents.d = deps;
+
+    } else if (isFunction(contents)) {
+      // If contents is already a function, make sure it has deps.
+      contents.d = contents.d || {};
+
+    } else if (! isObject(contents)) {
+      // If contents is neither an array nor a function nor an object,
+      // just give up and return null.
+      contents = null;
     }
 
-    // Given two module identifiers `id` and `baseId`, the `absolutize`
-    // function returns the absolute form of `id`, as if `id` were required
-    // from a module with the identifier `baseId`. For more information about
-    // relative identifiers, refer to the
-    // [spec](http://wiki.commonjs.org/wiki/Modules/1.1#Module_Identifiers).
-    var pathNormExp = /\/(\.?|[^\/]+\/\.\.)\//;
-    function absolutize(id, baseId) {
-        if (id.charAt(0) === ".") {
-            // Note: if `baseId` is omitted, then `"/undefined/../" + id` will
-            // be the starting point for normalization, which works just fine!
-            id = "/" + baseId + "/../" + id;
-            while (id != (baseId = id.replace(pathNormExp, "/")))
-                id = baseId;
-            id = id.replace(/^\//, "");
-        }
-        return id;
+    return contents;
+  }
+
+  function fileAppendIdPart(file, part, isLastPart) {
+    // Always append relative to a directory.
+    while (file && ! fileIsDirectory(file)) {
+      file = file.p;
     }
 
-    // The `flushQueue` function attempts to evaluate the oldest module in the
-    // queue, provided all of its dependencies have been installed. This
-    // provision is important because it ensures that the module can call
-    // `require` without fear of missing dependencies.
-    function flushQueue() {
-        var next = qhead.next, module;
-        if (next && !flushing && ready(module = next.module)) {
-            flushing = qhead = next;
-            // Module evaluation might throw an exception, so we need to
-            // schedule the next call to `flushQueue` before invoking
-            // `module.call`. The `setTimeout` function allows the stack to
-            // unwind before flushing resumes, so that the browser has a chance
-            // to report exceptions and/or handle other events.
-            global.setTimeout(resume, 0);
-            module.call(global, require);
-            flushing = undefined;
-        }
+    if (! file || ! part || part === ".") {
+      return file;
     }
 
-    // If `install` is called during the evaluation of a queued module,
-    // `flushQueue` could be invoked recursively. To prevent double evaluation,
-    // `flushQueue` sets `flushing` to a truthy value before it evaluates a
-    // module and refuses to evaluate any modules if `flushing` is truthy
-    // already.
-    var flushing;
-
-    // Since `resume` is only ever invoked from `setTimeout`, there is no risk
-    // that `flushQueue` is already executing, so it is safe to clear the
-    // `flushing` flag unconditionally.
-    function resume() {
-        flushing = undefined;
-        flushQueue();
+    if (part === "..") {
+      return file.p;
     }
 
-    // To be recognized as dependencies, calls to `require` must use string
-    // literal identifiers.
-    var requireExp = /\brequire\(['"]([^'"]+)['"]\)/g;
+    for (var e = 0; e < extensions.length; ++e) {
+      var withExtension = part + extensions[e];
 
-    // A module is `ready` to be evaluated if
-    //
-    //   1. it has an `.exports` property (indicating that it has already begun to be evaluated) or
-    //   1. all of its direct dependencies are installed and `ready` to be evaluated.
-    //
-    // Note that the above definition is recursive.
-    function ready(module) {
-        var deps, code, match, id, result = true;
+      var child = getOwn(file.c, withExtension);
+      if (child) {
+        return child;
+      }
 
-        if (!module.seen &&
-            !hasOwn.call(module, "exports"))
-        {
-            // Here's a little secret: module definitions don't have to be
-            // functions, as long as they have a suitable `.toString` and
-            // `.call` methods. If you have a really long module that you
-            // don't want to waste time scanning, just override its
-            // `.toString` function to return something equivalent (with
-            // regard to dependencies) but shorter.
-            deps = module.deps;
-            if (!deps) {
-                code = module + "";
-                deps = module.deps = {};
-                requireExp.lastIndex = 0;
-                while ((match = requireExp.exec(code)))
-                    deps[absolutize(match[1], module.id)] = true;
-            }
+      if (! isLastPart) {
+        // Only consider multiple file extensions if this part is the last
+        // part of a module identifier, and not "." or ".."
+        break;
+      }
+    }
+  };
 
-            // There may be cycles in the dependency graph, so we must be
-            // careful that the recursion always terminates. Each module we
-            // check is temporarily marked as `.seen` before its dependencies
-            // are traversed, so that if we encounter the same module again we
-            // can immediately return `true`.
-            module.seen = true;
+  function fileAppendId(file, id) {
+    var parts = id.split("/");
+    // Use Array.prototype.every to terminate iteration early if
+    // fileAppendIdPart returns a falsy value.
+    parts.every(function (part, i) {
+      return file = fileAppendIdPart(file, part, i === parts.length - 1);
+    });
+    return file;
+  };
 
-            for (id in deps) {
-                if (hasOwn.call(deps, id)) {
-                    // Once a dependency is determined to be satisfied, we
-                    // remove its identifier from `module.deps`, so that we
-                    // can avoid considering it again if `ready` is called
-                    // multiple times.
-                    if (hasOwn.call(installed, id) && ready(installed[id])) {
-                        delete deps[id];
-                    // If any dependency is missing or not `ready`, then the
-                    // current module is not yet `ready`. The `break` is not
-                    // strictly necessary here, but immediately terminating
-                    // the loop postpones work that can be done later.
-                    } else {
-                        result = false;
-                        break;
-                    }
-                }
-            }
+  function fileGetRoot(file) {
+    return file && fileGetRoot(file.p) || file;
+  }
 
-            // Ordinarily I would be more paranoid about always resetting
-            // `module.seen` to `false`, but if you thoroughly examine the code
-            // above, you'll find that the only real threat of exceptions comes
-            // from evaluating `code = module + ""` in a recursive call to
-            // `ready`. So if you decide to override the `.toString` method of a
-            // module for performance reasons, get it right.
-            module.seen = false;
-        }
+  function fileResolve(file, id) {
+    file =
+      // Absolute module identifiers (i.e. those that begin with a /
+      // character) are interpreted relative to the root directory, which
+      // is a slight deviation from Node, which has access to the entire
+      // file system.
+      id.charAt(0) === "/" ? fileAppendId(fileGetRoot(file), id) :
+      // Relative module identifiers are interpreted relative to the
+      // current file, naturally.
+      id.charAt(0) === "." ? fileAppendId(file, id) :
+      // Top-level module identifiers are interpreted as referring to
+      // either Meteor or NPM packages.
+      nodeModulesLookup(file, id);
 
-        return result;
+    // If the identifier resolves to a directory, we use the same logic as
+    // Node to find an index.js or package.json file to evaluate.
+    while (file && fileIsDirectory(file)) {
+      // If package.json does not exist, fileEvaluate will return the
+      // MISSING object, which has no .main property.
+      var pkg = fileEvaluate(fileAppendIdPart(file, "package.json"));
+      file = pkg && isString(pkg.main) &&
+        fileAppendId(file, pkg.main) || // Might resolve to another directory!
+        fileAppendIdPart(file, "index.js");
     }
 
-// The most reliable way to get the global object:
-// [http://stackoverflow.com/a/3277192/128454](http://stackoverflow.com/a/3277192/128454)
-}(Function("return this")()));
+    return file;
+  };
+
+  function nodeModulesLookup(file, id) {
+    return fileIsDirectory(file) &&
+      fileAppendId(file, "node_modules/" + id) ||
+      (file.p && nodeModulesLookup(file.p, id));
+  }
+})("object" === typeof global ? global :
+   "object" === typeof window ? window :
+   "object" === typeof self ? self : this);

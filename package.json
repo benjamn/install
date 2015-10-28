@@ -21,12 +21,12 @@
     "type": "git",
     "url": "git://github.com/benjamn/install.git"
   },
-  "main": "main.js",
+  "main": "install.js",
   "scripts": {
-    "test": "mocha test/run.js"
+    "test": "mocha --reporter spec --full-trace test/run.js"
   },
   "devDependencies": {
-    "mocha": "~2.0.1"
+    "mocha": "^2.3.3"
   },
   "engines": {
     "node": ">= 0.6"
