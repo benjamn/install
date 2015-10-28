@@ -48,7 +48,7 @@
                 <a class="pilcrow" href="#section-2">&#182;</a>
               </div>
               <p>Set up a simple queue for tracking required modules with unmet
-dependencies. See also queueAppend and queueFlush.</p>
+dependencies. See also <code>queueAppend</code> and <code>queueFlush</code>.</p>
 
             </div>
             
@@ -119,8 +119,8 @@ dependencies. See also queueAppend and queueFlush.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-4">&#182;</a>
               </div>
-              <p>Property names shortened to shave bytes: .t means .tail, .h means
-.head, .n means .next, and .f means .file.</p>
+              <p>Property names shortened to shave bytes: <code>.t</code> means <code>.tail</code>, <code>.h</code>
+means <code>.head</code>, <code>.n</code> means <code>.next</code>, and <code>.f</code> means <code>.file</code>.</p>
 
             </div>
             
@@ -156,7 +156,7 @@ ahead and schedule a flush.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-6">&#182;</a>
               </div>
-              <p>The q.p property is set to indicate a flush is pending.</p>
+              <p>The <code>q.p</code> property is set to indicate a flush is pending.</p>
 
             </div>
             
@@ -180,8 +180,8 @@ ahead and schedule a flush.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-7">&#182;</a>
               </div>
-              <p>These unbound{Require,Ensure} functions need to be bound to File
-objects before they can be used. See makeRequire.</p>
+              <p>These <code>unbound{Require,Ensure}</code> functions need to be bound to File
+objects before they can be used. See <code>makeRequire</code>.</p>
 
             </div>
             
@@ -207,7 +207,7 @@ objects before they can be used. See makeRequire.</p>
               </div>
               <p>Flatten arguments into an array containing relative module
 identifier strings and an optional callback function, then coerce
-that array into a callback function with a .d property.</p>
+that array into a callback function with a <code>.d</code> property.</p>
 
             </div>
             
@@ -223,7 +223,7 @@ that array into a callback function with a .d property.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-9">&#182;</a>
               </div>
-              <p>Note that queueAppend schedules a flush if there are no other
+              <p>Note that <code>queueAppend</code> schedules a flush if there are no other
 callbacks waiting in the queue.</p>
 
             </div>
@@ -244,7 +244,7 @@ callbacks waiting in the queue.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-10">&#182;</a>
               </div>
-              <p>TODO Consider adding require.promise.</p>
+              <p>TODO Consider adding <code>require.promise</code>.</p>
 
             </div>
             
@@ -261,17 +261,17 @@ callbacks waiting in the queue.</p>
                 <a class="pilcrow" href="#section-11">&#182;</a>
               </div>
               <p>File objects represent either directories or modules that have been
-installed via Meteor.install. When a File respresents a directory,
-its .c (contents) property is an object containing the names of the
-files (or directories) that it contains. When a File represents a
-module, its .c property is a function that can be invoked with the
-appropriate (require, exports, module) arguments to evaluate the
-module. The .p (parent) property of a File is either a directory File
-or null. Note that a child may claim another File as its parent even
-if the parent does not have an entry for that child in its .c object.
-This is important for implementing anonymous files, and preventing
-child modules from using ../relative/identifier syntax to examine
-unrelated modules.</p>
+installed. When a <code>File</code> respresents a directory, its <code>.c</code> (contents)
+property is an object containing the names of the files (or
+directories) that it contains. When a <code>File</code> represents a module, its
+<code>.c</code> property is a function that can be invoked with the appropriate
+<code>(require, exports, module)</code> arguments to evaluate the module. The
+<code>.p</code> (parent) property of a File is either a directory <code>File</code> or
+<code>null</code>. Note that a child may claim another <code>File</code> as its parent even
+if the parent does not have an entry for that child in its <code>.c</code>
+object.  This is important for implementing anonymous files, and
+preventing child modules from using <code>../relative/identifier</code> syntax
+to examine unrelated modules.</p>
 
             </div>
             
@@ -304,7 +304,7 @@ unrelated modules.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-13">&#182;</a>
               </div>
-              <p>If this file was created with name, join it with parent.id to
+              <p>If this file was created with <code>name</code>, join it with <code>parent.id</code> to
 generate a module identifier.</p>
 
             </div>
@@ -322,7 +322,7 @@ generate a module identifier.</p>
                 <a class="pilcrow" href="#section-14">&#182;</a>
               </div>
               <p>Queue for tracking required modules with unmet dependencies,
-inherited from the parent.</p>
+inherited from the <code>parent</code>.</p>
 
             </div>
             
@@ -337,7 +337,7 @@ inherited from the parent.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-15">&#182;</a>
               </div>
-              <p>Each directory has its own bound version of the require function
+              <p>Each directory has its own bound version of the <code>require</code> function
 that can resolve relative identifiers. Non-directory Files inherit
 the require function of their parent directories, so we don’t have
 to create a new require function every time we evaluate a module.</p>
@@ -357,9 +357,11 @@ to create a new require function every time we evaluate a module.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-16">&#182;</a>
               </div>
-              <p>TODO Compute file.id / module.id.</p>
+              <p>Set the initial value of <code>file.c</code> (the “contents” of the File).</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>    fileMergeContents(file, contents);</pre></div></div>
             
         </li>
         
@@ -370,22 +372,7 @@ to create a new require function every time we evaluate a module.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-17">&#182;</a>
               </div>
-              <p>Set the initial value of file.c (the “contents” of the File).</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    fileMergeContents(file, contents);</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-18">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-18">&#182;</a>
-              </div>
-              <p>When the file is a directory, file.ready is an object mapping
+              <p>When the file is a directory, <code>file.ready</code> is an object mapping
 module identifiers to boolean ready statuses. This information can
 be shared by all files in the directory, because module resolution
 always has the same results for all files in a given directory.</p>
@@ -398,11 +385,11 @@ always has the same results for all files in a given directory.</p>
         </li>
         
         
-        <li id="section-19">
+        <li id="section-18">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-19">&#182;</a>
+                <a class="pilcrow" href="#section-18">&#182;</a>
               </div>
               <p>A file is ready if all of its dependencies are installed and ready.</p>
 
@@ -420,13 +407,13 @@ always has the same results for all files in a given directory.</p>
         </li>
         
         
-        <li id="section-20">
+        <li id="section-19">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-20">&#182;</a>
+                <a class="pilcrow" href="#section-19">&#182;</a>
               </div>
-              <p>By storing the results of these lookups in parentReadyCache,
+              <p>By storing the results of these lookups in <code>parentReadyCache</code>,
 we benefit when any other file in the same directory resolves
 the same identifier.</p>
 
@@ -481,14 +468,14 @@ the same identifier.</p>
         </li>
         
         
-        <li id="section-21">
+        <li id="section-20">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-21">&#182;</a>
+                <a class="pilcrow" href="#section-20">&#182;</a>
               </div>
               <p>If contents is an array of strings and functions, return the last
-function with a .d property containing all the strings.</p>
+function with a <code>.d</code> property containing all the strings.</p>
 
             </div>
             
@@ -507,11 +494,11 @@ function with a .d property containing all the strings.</p>
         </li>
         
         
-        <li id="section-22">
+        <li id="section-21">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-22">&#182;</a>
+                <a class="pilcrow" href="#section-21">&#182;</a>
               </div>
               <p>If no function was found in the array, provide a default function
 that simply requires each dependency (really common case).</p>
@@ -529,11 +516,11 @@ that simply requires each dependency (really common case).</p>
         </li>
         
         
-        <li id="section-23">
+        <li id="section-22">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-23">&#182;</a>
+                <a class="pilcrow" href="#section-22">&#182;</a>
               </div>
               <p>If contents is already a function, make sure it has deps.</p>
 
@@ -546,11 +533,11 @@ that simply requires each dependency (really common case).</p>
         </li>
         
         
-        <li id="section-24">
+        <li id="section-23">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-24">&#182;</a>
+                <a class="pilcrow" href="#section-23">&#182;</a>
               </div>
               <p>If contents is neither an array nor a function nor an object,
 just give up and return null.</p>
@@ -568,11 +555,11 @@ just give up and return null.</p>
         </li>
         
         
-        <li id="section-25">
+        <li id="section-24">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-25">&#182;</a>
+                <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
               <p>Always append relative to a directory.</p>
 
@@ -603,14 +590,14 @@ just give up and return null.</p>
         </li>
         
         
-        <li id="section-26">
+        <li id="section-25">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-26">&#182;</a>
+                <a class="pilcrow" href="#section-25">&#182;</a>
               </div>
               <p>Only consider multiple file extensions if this part is the last
-part of a module identifier, and not “.” or “..”</p>
+part of a module identifier, and not <code>.</code> or <code>..</code>.</p>
 
             </div>
             
@@ -625,14 +612,14 @@ part of a module identifier, and not “.” or “..”</p>
         </li>
         
         
-        <li id="section-27">
+        <li id="section-26">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-27">&#182;</a>
+                <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
-              <p>Use Array.prototype.every to terminate iteration early if
-fileAppendIdPart returns a falsy value.</p>
+              <p>Use <code>Array.prototype.every</code> to terminate iteration early if
+<code>fileAppendIdPart</code> returns a falsy value.</p>
 
             </div>
             
@@ -652,13 +639,13 @@ fileAppendIdPart returns a falsy value.</p>
         </li>
         
         
-        <li id="section-28">
+        <li id="section-27">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-28">&#182;</a>
+                <a class="pilcrow" href="#section-27">&#182;</a>
               </div>
-              <p>Absolute module identifiers (i.e. those that begin with a /
+              <p>Absolute module identifiers (i.e. those that begin with a <code>/</code>
 character) are interpreted relative to the root directory, which
 is a slight deviation from Node, which has access to the entire
 file system.</p>
@@ -670,11 +657,11 @@ file system.</p>
         </li>
         
         
-        <li id="section-29">
+        <li id="section-28">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-29">&#182;</a>
+                <a class="pilcrow" href="#section-28">&#182;</a>
               </div>
               <p>Relative module identifiers are interpreted relative to the
 current file, naturally.</p>
@@ -686,18 +673,34 @@ current file, naturally.</p>
         </li>
         
         
+        <li id="section-29">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-29">&#182;</a>
+              </div>
+              <p>Top-level module identifiers are interpreted as referring to
+packages in <code>node_modules</code> directories.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      nodeModulesLookup(file, id);</pre></div></div>
+            
+        </li>
+        
+        
         <li id="section-30">
             <div class="annotation">
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-30">&#182;</a>
               </div>
-              <p>Top-level module identifiers are interpreted as referring to
-either Meteor or NPM packages.</p>
+              <p>If the identifier resolves to a directory, we use the same logic as
+Node to find an <code>index.js</code> or <code>package.json</code> file to evaluate.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      nodeModulesLookup(file, id);</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">while</span> (file &amp;&amp; fileIsDirectory(file)) {</pre></div></div>
             
         </li>
         
@@ -708,24 +711,8 @@ either Meteor or NPM packages.</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-31">&#182;</a>
               </div>
-              <p>If the identifier resolves to a directory, we use the same logic as
-Node to find an index.js or package.json file to evaluate.</p>
-
-            </div>
-            
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">while</span> (file &amp;&amp; fileIsDirectory(file)) {</pre></div></div>
-            
-        </li>
-        
-        
-        <li id="section-32">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-32">&#182;</a>
-              </div>
-              <p>If package.json does not exist, fileEvaluate will return the
-MISSING object, which has no .main property.</p>
+              <p>If <code>package.json</code> does not exist, <code>fileEvaluate</code> will return the
+<code>MISSING</code> object, which has no <code>.main</code> property.</p>
 
             </div>
             
