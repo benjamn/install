@@ -7,7 +7,7 @@
     var root = new File({});
 
     // Set up a simple queue for tracking required modules with unmet
-    // dependencies. See also queueAppend and queueFlush.
+    // dependencies. See also `queueAppend` and `queueFlush`.
     var q = root.q = {};
     q.h = q.t = {}; // Queue head, queue tail.
     // Configurable function for deferring queue flushes.
@@ -52,8 +52,8 @@
   }
 
   function queueAppend(q, file) {
-    // Property names shortened to shave bytes: .t means .tail, .h means
-    // .head, .n means .next, and .f means .file.
+    // Property names shortened to shave bytes: `.t` means `.tail`, `.h`
+    // means `.head`, `.n` means `.next`, and `.f` means `.file`.
     q.t = q.t.n = { f: file };
     if (q.h.n === q.t) {
       // If the queue contains only one File (the one we just added), go
@@ -63,7 +63,7 @@
   }
 
   function queueFlush(q) {
-    // The q.p property is set to indicate a flush is pending.
+    // The `q.p` property is set to indicate a flush is pending.
     q.p || (q.p = true, q.d(function () {
       q.p = undefined;
       var next = q.h.n;
@@ -75,8 +75,8 @@
     }));
   }
 
-  // These unbound{Require,Ensure} functions need to be bound to File
-  // objects before they can be used. See makeRequire.
+  // These `unbound{Require,Ensure}` functions need to be bound to File
+  // objects before they can be used. See `makeRequire`.
 
   function unboundRequire(id) {
     var result = fileEvaluate(fileResolve(this, id));
@@ -89,11 +89,11 @@
   function unboundEnsure() {
     // Flatten arguments into an array containing relative module
     // identifier strings and an optional callback function, then coerce
-    // that array into a callback function with a .d property.
+    // that array into a callback function with a `.d` property.
     var flatArgs = Ap.concat.apply(Ap, arguments);
     var callback = ensureObjectOrFunction(flatArgs);
 
-    // Note that queueAppend schedules a flush if there are no other
+    // Note that `queueAppend` schedules a flush if there are no other
     // callbacks waiting in the queue.
     queueAppend(this.q, new File(callback, this));
   }
@@ -101,22 +101,22 @@
   function makeRequire(file) {
     var require = unboundRequire.bind(file);
     require.ensure = unboundEnsure.bind(file);
-    // TODO Consider adding require.promise.
+    // TODO Consider adding `require.promise`.
     return require;
   }
 
   // File objects represent either directories or modules that have been
-  // installed via Meteor.install. When a File respresents a directory,
-  // its .c (contents) property is an object containing the names of the
-  // files (or directories) that it contains. When a File represents a
-  // module, its .c property is a function that can be invoked with the
-  // appropriate (require, exports, module) arguments to evaluate the
-  // module. The .p (parent) property of a File is either a directory File
-  // or null. Note that a child may claim another File as its parent even
-  // if the parent does not have an entry for that child in its .c object.
-  // This is important for implementing anonymous files, and preventing
-  // child modules from using ../relative/identifier syntax to examine
-  // unrelated modules.
+  // installed. When a `File` respresents a directory, its `.c` (contents)
+  // property is an object containing the names of the files (or
+  // directories) that it contains. When a `File` represents a module, its
+  // `.c` property is a function that can be invoked with the appropriate
+  // `(require, exports, module)` arguments to evaluate the module. The
+  // `.p` (parent) property of a File is either a directory `File` or
+  // `null`. Note that a child may claim another `File` as its parent even
+  // if the parent does not have an entry for that child in its `.c`
+  // object.  This is important for implementing anonymous files, and
+  // preventing child modules from using `../relative/identifier` syntax
+  // to examine unrelated modules.
   function File(contents, /*optional:*/ parent, name) {
     var file = this;
 
@@ -124,16 +124,16 @@
     file.p = parent = parent || null;
 
     if (name) {
-      // If this file was created with name, join it with parent.id to
+      // If this file was created with `name`, join it with `parent.id` to
       // generate a module identifier.
       file.id = (parent && parent.id || "") + "/" + name;
     }
 
     // Queue for tracking required modules with unmet dependencies,
-    // inherited from the parent.
+    // inherited from the `parent`.
     file.q = parent && parent.q;
 
-    // Each directory has its own bound version of the require function
+    // Each directory has its own bound version of the `require` function
     // that can resolve relative identifiers. Non-directory Files inherit
     // the require function of their parent directories, so we don't have
     // to create a new require function every time we evaluate a module.
@@ -141,12 +141,10 @@
       ? makeRequire(file)
       : parent && parent.r;
 
-    // TODO Compute file.id / module.id.
-
-    // Set the initial value of file.c (the "contents" of the File).
+    // Set the initial value of `file.c` (the "contents" of the File).
     fileMergeContents(file, contents);
 
-    // When the file is a directory, file.ready is an object mapping
+    // When the file is a directory, `file.ready` is an object mapping
     // module identifiers to boolean ready statuses. This information can
     // be shared by all files in the directory, because module resolution
     // always has the same results for all files in a given directory.
@@ -162,7 +160,7 @@
       module.seen = true;
       var parentReadyCache = file.p.ready;
       result = Object.keys(deps).every(function (dep) {
-        // By storing the results of these lookups in parentReadyCache,
+        // By storing the results of these lookups in `parentReadyCache`,
         // we benefit when any other file in the same directory resolves
         // the same identifier.
         return parentReadyCache[dep] =
@@ -211,7 +209,7 @@
 
   function ensureObjectOrFunction(contents) {
     // If contents is an array of strings and functions, return the last
-    // function with a .d property containing all the strings.
+    // function with a `.d` property containing all the strings.
     if (Array.isArray(contents)) {
       var deps = {};
       var func;
@@ -269,7 +267,7 @@
 
       if (! isLastPart) {
         // Only consider multiple file extensions if this part is the last
-        // part of a module identifier, and not "." or ".."
+        // part of a module identifier, and not `.` or `..`.
         break;
       }
     }
@@ -277,8 +275,8 @@
 
   function fileAppendId(file, id) {
     var parts = id.split("/");
-    // Use Array.prototype.every to terminate iteration early if
-    // fileAppendIdPart returns a falsy value.
+    // Use `Array.prototype.every` to terminate iteration early if
+    // `fileAppendIdPart` returns a falsy value.
     parts.every(function (part, i) {
       return file = fileAppendIdPart(file, part, i === parts.length - 1);
     });
@@ -291,7 +289,7 @@
 
   function fileResolve(file, id) {
     file =
-      // Absolute module identifiers (i.e. those that begin with a /
+      // Absolute module identifiers (i.e. those that begin with a `/`
       // character) are interpreted relative to the root directory, which
       // is a slight deviation from Node, which has access to the entire
       // file system.
@@ -300,14 +298,14 @@
       // current file, naturally.
       id.charAt(0) === "." ? fileAppendId(file, id) :
       // Top-level module identifiers are interpreted as referring to
-      // either Meteor or NPM packages.
+      // packages in `node_modules` directories.
       nodeModulesLookup(file, id);
 
     // If the identifier resolves to a directory, we use the same logic as
-    // Node to find an index.js or package.json file to evaluate.
+    // Node to find an `index.js` or `package.json` file to evaluate.
     while (file && fileIsDirectory(file)) {
-      // If package.json does not exist, fileEvaluate will return the
-      // MISSING object, which has no .main property.
+      // If `package.json` does not exist, `fileEvaluate` will return the
+      // `MISSING` object, which has no `.main` property.
       var pkg = fileEvaluate(fileAppendIdPart(file, "package.json"));
       file = pkg && isString(pkg.main) &&
         fileAppendId(file, pkg.main) || // Might resolve to another directory!
