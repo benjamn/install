@@ -5,6 +5,7 @@ cd $(dirname $0)/..
 uglifyjs install.js -c -m > install.min.js
 
 docco install.js
+git fetch origin
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 tar czvf docs.tgz docs
 git checkout gh-pages
