@@ -25,6 +25,7 @@
   "main": "install.js",
   "scripts": {
     "prepublish": "scripts/prepublish.sh",
+    "docs": "scripts/docs.sh",
     "test": "mocha --reporter spec --full-trace test/run.js"
   },
   "devDependencies": {
