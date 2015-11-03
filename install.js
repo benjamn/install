@@ -224,7 +224,7 @@
 
       // If no function was found in the array, provide a default function
       // that simply requires each dependency (really common case).
-      contents = func || function (module, require) {
+      contents = func || function (require) {
         Object.keys(deps).forEach(require);
       };
 
