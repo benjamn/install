@@ -227,7 +227,11 @@
       // If no function was found in the array, provide a default function
       // that simply requires each dependency (really common case).
       contents = func || function (require) {
-        deps.forEach(require);
+        deps.forEach(function (key) {
+          require.ensure(function () {
+            require(key);
+          });
+        });
       };
 
       contents.d = deps;
