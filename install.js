@@ -161,7 +161,7 @@
     if (deps && ! getOwn(factory, "seen")) {
       factory.seen = true;
       var parentReadyCache = file.p.ready;
-      result = Object.keys(deps).every(function (dep) {
+      result = deps.every(function (dep) {
         // By storing the results of these lookups in `parentReadyCache`,
         // we benefit when any other file in the same directory resolves
         // the same identifier.
@@ -213,12 +213,12 @@
     // If contents is an array of strings and functions, return the last
     // function with a `.d` property containing all the strings.
     if (Array.isArray(contents)) {
-      var deps = {};
+      var deps = [];
       var func;
 
       contents.forEach(function (item) {
         if (isString(item)) {
-          deps[item] = false; // Initially unsatisfied.
+          deps.push(item);
         } else if (isFunction(item)) {
           func = item;
         }
@@ -227,14 +227,14 @@
       // If no function was found in the array, provide a default function
       // that simply requires each dependency (really common case).
       contents = func || function (require) {
-        Object.keys(deps).forEach(require);
+        deps.forEach(require);
       };
 
       contents.d = deps;
 
     } else if (isFunction(contents)) {
       // If contents is already a function, make sure it has deps.
-      contents.d = contents.d || {};
+      contents.d = contents.d || [];
 
     } else if (! isObject(contents)) {
       // If contents is neither an array nor a function nor an object,
