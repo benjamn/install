@@ -123,11 +123,13 @@
     // Link to the parent file.
     file.p = parent = parent || null;
 
-    if (name) {
-      // If this file was created with `name`, join it with `parent.id` to
-      // generate a module identifier.
-      file.id = (parent && parent.id || "") + "/" + name;
-    }
+    // The module object for this File, which will eventually boast an
+    // .exports property when/if the file is evaluated.
+    file.m = {
+      // If this file was created with `name`, join it with `parent.m.id`
+      // to generate a module identifier.
+      id: name ? (parent && parent.m.id || "") + "/" + name : null
+    };
 
     // Queue for tracking required modules with unmet dependencies,
     // inherited from the `parent`.
@@ -154,10 +156,10 @@
   // A file is ready if all of its dependencies are installed and ready.
   function fileReady(file) {
     var result = !! file;
-    var module = file && file.c;
-    var deps = isFunction(module) && module.d;
-    if (deps && ! getOwn(module, "seen")) {
-      module.seen = true;
+    var factory = file && file.c;
+    var deps = isFunction(factory) && factory.d;
+    if (deps && ! getOwn(factory, "seen")) {
+      factory.seen = true;
       var parentReadyCache = file.p.ready;
       result = Object.keys(deps).every(function (dep) {
         // By storing the results of these lookups in `parentReadyCache`,
@@ -167,17 +169,17 @@
           parentReadyCache[dep] ||
           fileReady(fileResolve(file.p, dep));
       });
-      module.seen = undefined;
+      factory.seen = undefined;
     }
     return result;
   }
 
   function fileEvaluate(file) {
-    var module = file && file.c;
-    if (isFunction(module)) {
+    var factory = file && file.c;
+    if (isFunction(factory)) {
+      var module = file.m;
       if (! hasOwn.call(module, "exports")) {
-        module.id = file.id;
-        module.call(global, file.r, module.exports = {}, module);
+        factory.call(global, file.r, module.exports = {}, module);
       }
       return module.exports;
     }

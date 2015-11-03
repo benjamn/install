@@ -18,6 +18,7 @@ describe("install", function () {
 
     var require = install({
       "foo.js": function (require, exports, module) {
+        assert.strictEqual(typeof module, "object");
         assert.strictEqual(require(module.id), exports);
         module.exports = require("asdf");
         assert.strictEqual(require(module.id), module.exports);
