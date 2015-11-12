@@ -298,4 +298,33 @@ describe("install", function () {
       }
     });
   });
+
+  it("prefers fuzzy files to exact directories", function () {
+    var install = main.makeInstaller();
+    var require = install({
+      "node_modules": {
+        "foo.js": function (r, exports) {
+          exports.file = true;
+        },
+        "foo": {
+          "index.js": function (require, exports) {
+            exports.directory = true;
+            assert.deepEqual(require("foo"), { file: true });
+          }
+        }
+      }
+    });
+
+    assert.deepEqual(require("foo.js"), { file: true });
+    assert.deepEqual(require("foo"), { file: true });
+    assert.deepEqual(require("foo/"), { directory: true });
+    assert.deepEqual(require("foo/."), { directory: true });
+    assert.deepEqual(require("foo/index"), { directory: true });
+
+    assert.deepEqual(require("./node_modules/foo.js"), { file: true });
+    assert.deepEqual(require("./node_modules/foo"), { file: true });
+    assert.deepEqual(require("./node_modules/foo/"), { directory: true });
+    assert.deepEqual(require("./node_modules/foo/."), { directory: true });
+    assert.deepEqual(require("./node_modules/foo/index"), { directory: true });
+  });
 });

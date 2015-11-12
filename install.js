@@ -30,7 +30,7 @@
     exports.makeInstaller = makeInstaller;
   }
 
-  var extensions = ["", ".js", ".json"];
+  var extensions = [".js", ".json"];
   var MISSING = {};
   var hasOwn = MISSING.hasOwnProperty;
   var Ap = Array.prototype;
@@ -263,20 +263,21 @@
       return file.p;
     }
 
-    for (var e = 0; e < extensions.length; ++e) {
-      var withExtension = part + extensions[e];
+    var exactChild = getOwn(file.c, part);
 
-      var child = getOwn(file.c, withExtension);
-      if (child) {
-        return child;
-      }
-
-      if (! isLastPart) {
-        // Only consider multiple file extensions if this part is the last
-        // part of a module identifier, and not `.` or `..`.
-        break;
+    // Only consider multiple file extensions if this part is the last
+    // part of a module identifier and not equal to `.` or `..`, and there
+    // was no exact match or the exact match was a directory.
+    if (isLastPart && (! exactChild || fileIsDirectory(exactChild))) {
+      for (var e = 0; e < extensions.length; ++e) {
+        var child = getOwn(file.c, part + extensions[e]);
+        if (child) {
+          return child;
+        }
       }
     }
+
+    return exactChild;
   };
 
   function fileAppendId(file, id) {
