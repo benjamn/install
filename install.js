@@ -17,6 +17,12 @@ makeInstaller = function (options) {
   // new modules are installed.
   var onInstall = options.onInstall;
 
+  // If defined, the options.fallback function will be called when no
+  // installed module is found for a required module identifier. Often
+  // options.fallback will be implemented in terms of the native Node
+  // require function, which has the ability to load binary modules.
+  var fallback = options.fallback;
+
   // Whenever a new require function is created in the makeRequire
   // function below, any methods contained by options.requireMethods will
   // be bound and attached as methods to that function object. This option
@@ -68,7 +74,14 @@ makeInstaller = function (options) {
     function require(id) {
       var result = fileEvaluate(fileResolve(file, id));
       if (result === MISSING) {
-        throw new Error("Cannot find module '" + id + "'");
+        var error = new Error("Cannot find module '" + id + "'");
+        if (isFunction(fallback)) {
+          result = fallback(
+            id, // The missing module identifier.
+            file.m.id, // The path of the enclosing directory.
+            error // The error we would have thrown.
+          );
+        } else throw error;
       }
       return result;
     }

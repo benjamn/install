@@ -327,4 +327,34 @@ describe("install", function () {
     assert.deepEqual(require("./node_modules/foo/."), { directory: true });
     assert.deepEqual(require("./node_modules/foo/index"), { directory: true });
   });
+
+  it("supports options.fallback", function (done) {
+    var unknown = {};
+
+    var install = main.makeInstaller({
+      fallback: function (id, directoryId, error) {
+        assert.strictEqual(id, "unknown-module");
+        assert.strictEqual(directoryId, "/foo/bar");
+        assert.ok(error instanceof Error);
+        return unknown;
+      }
+    });
+
+    var require = install({
+      foo: {
+        bar: {
+          "parent.js": function (require) {
+            assert.strictEqual(
+              require("unknown-module"),
+              unknown
+            );
+
+            done();
+          }
+        }
+      }
+    });
+
+    require("./foo/bar/parent");
+  });
 });
