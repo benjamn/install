@@ -1,5 +1,5 @@
 var assert = require("assert");
-var main = require("..");
+var main = require("../ensure");
 
 describe("install", function () {
   it("binds this to global", function () {

@@ -1,39 +1,52 @@
-(function (global, undefined) {
-  if (global.makeInstaller) {
-    return;
-  }
+makeInstaller = function (options) {
+  options = options || {};
 
-  function makeInstaller(options) {
-    var root = new File({});
+  // These file extensions will be appended to required module identifiers
+  // if they do not exactly match an installed module.
+  var extensions = options.extensions || [".js", ".json"];
 
-    // Set up a simple queue for tracking required modules with unmet
-    // dependencies. See also `queueAppend` and `queueFlush`.
-    var q = root.q = {};
-    q.h = q.t = {}; // Queue head, queue tail.
-    // Configurable function for deferring queue flushes.
-    q.d = options && options.defer || function (fn) {
-      setTimeout(fn, 0);
-    };
+  // This constructor will be used to instantiate the module objects
+  // passed to module factory functions (i.e. the third argument after
+  // require and exports).
+  var Module = options.Module || function Module(id, parent) {
+    this.id = id;
+    this.parent = parent;
+  };
 
-    return function install(tree) {
-      if (isObject(tree)) {
-        fileMergeContents(root, tree);
-        queueFlush(root.q);
-      }
-      return root.r;
-    };
-  }
+  // If defined, the options.onInstall function will be called any time
+  // new modules are installed.
+  var onInstall = options.onInstall;
 
-  global.makeInstaller = makeInstaller;
+  // Whenever a new require function is created in the makeRequire
+  // function below, any methods contained by options.requireMethods will
+  // be bound and attached as methods to that function object. This option
+  // is intended to support user-defined require.* extensions like
+  // require.ensure and require.promise.
+  var requireMethods = options.requireMethods;
 
-  if (typeof exports === "object") {
-    exports.makeInstaller = makeInstaller;
-  }
-
-  var extensions = [".js", ".json"];
+  // Sentinel returned by fileEvaluate when module resolution fails.
   var MISSING = {};
+
+  // Nothing special about MISSING.hasOwnProperty, except that it's fewer
+  // characters than Object.prototype.hasOwnProperty after minification.
   var hasOwn = MISSING.hasOwnProperty;
-  var Ap = Array.prototype;
+
+  // The file object representing the root directory of the installed
+  // module tree.
+  var root = new File({});
+
+  // Merges the given tree of directories and module factory functions
+  // into the tree of installed modules and returns a require function
+  // that behaves as if called from a module in the root directory.
+  function install(tree) {
+    if (isObject(tree)) {
+      fileMergeContents(root, tree);
+      if (isFunction(onInstall)) {
+        onInstall(root.r);
+      }
+    }
+    return root.r;
+  }
 
   function getOwn(obj, key) {
     return hasOwn.call(obj, key) && obj[key];
@@ -51,57 +64,31 @@
     return typeof value === "string";
   }
 
-  function queueAppend(q, file) {
-    // Property names shortened to shave bytes: `.t` means `.tail`, `.h`
-    // means `.head`, `.n` means `.next`, and `.f` means `.file`.
-    q.t = q.t.n = { f: file };
-    if (q.h.n === q.t) {
-      // If the queue contains only one File (the one we just added), go
-      // ahead and schedule a flush.
-      queueFlush(q);
-    }
-  }
-
-  function queueFlush(q) {
-    // The `q.p` property is set to indicate a flush is pending.
-    q.p || (q.p = true, q.d(function () {
-      q.p = undefined;
-      var next = q.h.n;
-      if (next && fileReady(next.f)) {
-        queueFlush(q); // Schedule the next flush.
-        q.h = next;
-        fileEvaluate(next.f);
-      }
-    }));
-  }
-
-  // These `unbound{Require,Ensure}` functions need to be bound to File
-  // objects before they can be used. See `makeRequire`.
-
-  function unboundRequire(id) {
-    var result = fileEvaluate(fileResolve(this, id));
-    if (result === MISSING) {
-      throw new Error("Cannot find module '" + id + "'");
-    }
-    return result;
-  }
-
-  function unboundEnsure() {
-    // Flatten arguments into an array containing relative module
-    // identifier strings and an optional callback function, then coerce
-    // that array into a callback function with a `.d` property.
-    var flatArgs = Ap.concat.apply(Ap, arguments);
-    var callback = ensureObjectOrFunction(flatArgs);
-
-    // Note that `queueAppend` schedules a flush if there are no other
-    // callbacks waiting in the queue.
-    queueAppend(this.q, new File(callback, this));
-  }
-
   function makeRequire(file) {
-    var require = unboundRequire.bind(file);
-    require.ensure = unboundEnsure.bind(file);
-    // TODO Consider adding `require.promise`.
+    function require(id) {
+      var result = fileEvaluate(fileResolve(file, id));
+      if (result === MISSING) {
+        throw new Error("Cannot find module '" + id + "'");
+      }
+      return result;
+    }
+
+    // A function that immediately returns true iff all the transitive
+    // dependencies of the module identified by id have been installed.
+    // This function can be used with options.onInstall to implement
+    // asynchronous module loading APIs like require.ensure.
+    require.ready = function (id) {
+      return fileReady(fileResolve(file, id));
+    };
+
+    if (requireMethods) {
+      Object.keys(requireMethods).forEach(function (name) {
+        if (isFunction(requireMethods[name])) {
+          require[name] = requireMethods[name].bind(require);
+        }
+      });
+    }
+
     return require;
   }
 
@@ -125,11 +112,12 @@
 
     // The module object for this File, which will eventually boast an
     // .exports property when/if the file is evaluated.
-    file.m = {
+    file.m = new Module(
       // If this file was created with `name`, join it with `parent.m.id`
       // to generate a module identifier.
-      id: name ? (parent && parent.m.id || "") + "/" + name : null
-    };
+      name ? (parent && parent.m.id || "") + "/" + name : null,
+      parent && parent.m
+    );
 
     // Queue for tracking required modules with unmet dependencies,
     // inherited from the `parent`.
@@ -169,7 +157,7 @@
           parentReadyCache[dep] ||
           fileReady(fileResolve(file.p, dep));
       });
-      factory.seen = undefined;
+      factory.seen = false;
     }
     return result;
   }
@@ -179,7 +167,7 @@
     if (isFunction(factory)) {
       var module = file.m;
       if (! hasOwn.call(module, "exports")) {
-        factory.call(global, file.r, module.exports = {}, module);
+        factory(file.r, module.exports = {}, module);
       }
       return module.exports;
     }
@@ -191,7 +179,37 @@
   }
 
   function fileMergeContents(file, contents) {
-    if ((contents = ensureObjectOrFunction(contents))) {
+    // If contents is an array of strings and functions, return the last
+    // function with a `.d` property containing all the strings.
+    if (Array.isArray(contents)) {
+      var deps = [];
+
+      contents.forEach(function (item) {
+        if (isString(item)) {
+          deps.push(item);
+        } else if (isFunction(item)) {
+          contents = item;
+        }
+      });
+
+      if (isFunction(contents)) {
+        contents.d = deps;
+      } else {
+        // If the array did not contain a function, merge nothing.
+        contents = null;
+      }
+
+    } else if (isFunction(contents)) {
+      // If contents is already a function, make sure it has `.d`.
+      contents.d = contents.d || [];
+
+    } else if (! isObject(contents)) {
+      // If contents is neither an array nor a function nor an object,
+      // just give up and merge nothing.
+      contents = null;
+    }
+
+    if (contents) {
       var fileContents = file.c = file.c || (
         isFunction(contents) ? contents : {}
       );
@@ -207,46 +225,6 @@
         });
       }
     }
-  };
-
-  function ensureObjectOrFunction(contents) {
-    // If contents is an array of strings and functions, return the last
-    // function with a `.d` property containing all the strings.
-    if (Array.isArray(contents)) {
-      var deps = [];
-      var func;
-
-      contents.forEach(function (item) {
-        if (isString(item)) {
-          deps.push(item);
-        } else if (isFunction(item)) {
-          func = item;
-        }
-      });
-
-      // If no function was found in the array, provide a default function
-      // that simply requires each dependency (really common case).
-      contents = func || function (require) {
-        deps.forEach(function (key) {
-          require.ensure(function () {
-            require(key);
-          });
-        });
-      };
-
-      contents.d = deps;
-
-    } else if (isFunction(contents)) {
-      // If contents is already a function, make sure it has deps.
-      contents.d = contents.d || [];
-
-    } else if (! isObject(contents)) {
-      // If contents is neither an array nor a function nor an object,
-      // just give up and return null.
-      contents = null;
-    }
-
-    return contents;
   }
 
   function fileAppendIdPart(file, part, isLastPart) {
@@ -278,7 +256,7 @@
     }
 
     return exactChild;
-  };
+  }
 
   function fileAppendId(file, id) {
     var parts = id.split("/");
@@ -288,10 +266,6 @@
       return file = fileAppendIdPart(file, part, i === parts.length - 1);
     });
     return file;
-  };
-
-  function fileGetRoot(file) {
-    return file && fileGetRoot(file.p) || file;
   }
 
   function fileResolve(file, id) {
@@ -300,7 +274,7 @@
       // character) are interpreted relative to the root directory, which
       // is a slight deviation from Node, which has access to the entire
       // file system.
-      id.charAt(0) === "/" ? fileAppendId(fileGetRoot(file), id) :
+      id.charAt(0) === "/" ? fileAppendId(root, id) :
       // Relative module identifiers are interpreted relative to the
       // current file, naturally.
       id.charAt(0) === "." ? fileAppendId(file, id) :
@@ -327,6 +301,10 @@
       fileAppendId(file, "node_modules/" + id) ||
       (file.p && nodeModulesLookup(file.p, id));
   }
-})("object" === typeof global ? global :
-   "object" === typeof window ? window :
-   "object" === typeof self ? self : this);
+
+  return install;
+};
+
+if (typeof exports === "object") {
+  exports.makeInstaller = makeInstaller;
+}
