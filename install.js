@@ -110,13 +110,15 @@ makeInstaller = function (options) {
   // property is an object containing the names of the files (or
   // directories) that it contains. When a `File` represents a module, its
   // `.c` property is a function that can be invoked with the appropriate
-  // `(require, exports, module)` arguments to evaluate the module. The
-  // `.p` (parent) property of a File is either a directory `File` or
-  // `null`. Note that a child may claim another `File` as its parent even
-  // if the parent does not have an entry for that child in its `.c`
-  // object.  This is important for implementing anonymous files, and
-  // preventing child modules from using `../relative/identifier` syntax
-  // to examine unrelated modules.
+  // `(require, exports, module)` arguments to evaluate the module. If the
+  // `.c` property is a string, that string will be resolved as a module
+  // identifier, and the exports of the resulting module will provide the
+  // exports of the original file. The `.p` (parent) property of a File is
+  // either a directory `File` or `null`. Note that a child may claim
+  // another `File` as its parent even if the parent does not have an
+  // entry for that child in its `.c` object.  This is important for
+  // implementing anonymous files, and preventing child modules from using
+  // `../relative/identifier` syntax to examine unrelated modules.
   function File(contents, /*optional:*/ parent, name) {
     var file = this;
 
@@ -147,40 +149,57 @@ makeInstaller = function (options) {
     // Set the initial value of `file.c` (the "contents" of the File).
     fileMergeContents(file, contents);
 
-    // When the file is a directory, `file.ready` is an object mapping
-    // module identifiers to boolean ready statuses. This information can
-    // be shared by all files in the directory, because module resolution
-    // always has the same results for all files in a given directory.
-    file.ready = fileIsDirectory(file) && {};
+    // When the file is a directory, `file.rc` is an object mapping module
+    // identifiers to boolean ready statuses ("rc" is short for "ready
+    // cache"). This information can be shared by all files in the
+    // directory, because module resolution always has the same results
+    // for all files in a given directory.
+    file.rc = fileIsDirectory(file) && {};
   }
 
   // A file is ready if all of its dependencies are installed and ready.
   function fileReady(file) {
     var result = !! file;
-    var factory = file && file.c;
-    var deps = isFunction(factory) && factory.d;
-    if (deps && ! getOwn(factory, "seen")) {
-      factory.seen = true;
-      var parentReadyCache = file.p.ready;
-      result = deps.every(function (dep) {
-        // By storing the results of these lookups in `parentReadyCache`,
-        // we benefit when any other file in the same directory resolves
-        // the same identifier.
-        return parentReadyCache[dep] =
-          parentReadyCache[dep] ||
-          fileReady(fileResolve(file.p, dep));
-      });
-      factory.seen = false;
+    var contents = file && file.c;
+
+    if (contents && ! file.inReady) {
+      file.inReady = true;
+
+      if (isString(contents)) {
+        // This file is aliased (or symbolically linked) to the file
+        // obtained by resolving the contents string as a module
+        // identifier, so regard it as ready iff the resolved file exists
+        // and is ready.
+        result = fileReady(fileResolve(file, contents));
+
+      } else if (isFunction(contents)) {
+        var deps = contents.d;
+        if (deps) {
+          var parentReadyCache = file.p.rc;
+
+          result = deps.every(function (dep) {
+            // By storing the results of these lookups in `parentReadyCache`,
+            // we benefit when any other file in the same directory resolves
+            // the same identifier.
+            return parentReadyCache[dep] =
+              parentReadyCache[dep] ||
+              fileReady(fileResolve(file.p, dep));
+          });
+        }
+      }
+
+      file.inReady = false;
     }
+
     return result;
   }
 
   function fileEvaluate(file) {
-    var factory = file && file.c;
-    if (isFunction(factory)) {
+    var contents = file && file.c;
+    if (isFunction(contents)) {
       var module = file.m;
       if (! hasOwn.call(module, "exports")) {
-        factory(file.r, module.exports = {}, module);
+        contents(file.r, module.exports = {}, module);
       }
       return module.exports;
     }
@@ -216,15 +235,16 @@ makeInstaller = function (options) {
       // If contents is already a function, make sure it has `.d`.
       contents.d = contents.d || [];
 
-    } else if (! isObject(contents)) {
-      // If contents is neither an array nor a function nor an object,
-      // just give up and merge nothing.
+    } else if (! isString(contents) &&
+               ! isObject(contents)) {
+      // If contents is neither an array nor a function nor a string nor
+      // an object, just give up and merge nothing.
       contents = null;
     }
 
     if (contents) {
       var fileContents = file.c = file.c || (
-        isFunction(contents) ? contents : {}
+        isObject(contents) ? {} : contents
       );
 
       if (isObject(contents) && fileIsDirectory(file)) {
@@ -304,6 +324,10 @@ makeInstaller = function (options) {
       file = pkg && isString(pkg.main) &&
         fileAppendId(file, pkg.main) || // Might resolve to another directory!
         fileAppendIdPart(file, "index.js");
+    }
+
+    if (file && isString(file.c)) {
+      file = fileResolve(file, file.c);
     }
 
     return file;

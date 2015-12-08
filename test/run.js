@@ -357,4 +357,59 @@ describe("install", function () {
 
     require("./foo/bar/parent");
   });
+
+  it("supports symbolic links", function () {
+    var install = main.makeInstaller();
+    var require = install({
+      a: "./dir/c",
+      dir: {
+        b: "./c",
+        c: function (require, exports, module) {
+          exports.id = module.id;
+        },
+        d: "e",
+        node_modules: {
+          "e.js": ["f", function (require, exports, module) {
+            exports.id = module.id;
+          }]
+        }
+      }
+    });
+
+    var a = require("./a");
+    var b = require("./dir/b");
+    var c = require("./dir/c");
+
+    assert.strictEqual(a, c);
+    assert.strictEqual(b, c);
+    assert.strictEqual(c.id, "/dir/c");
+
+    assert.strictEqual(require.ready("./dir/d"), false);
+
+    install({
+      dir: {
+        node_modules: {
+          f: {
+            // Because there is no index.js or package.json, the f package
+            // should still not be ready.
+          }
+        }
+      }
+    });
+
+    assert.strictEqual(require.ready("./dir/d"), false);
+
+    install({
+      dir: {
+        node_modules: {
+          f: {
+            "index.js": function() {}
+          }
+        }
+      }
+    });
+
+    assert.strictEqual(require.ready("./dir/d"), true);
+    assert.strictEqual(require("./dir/d").id, "/dir/node_modules/e.js");
+  });
 });
