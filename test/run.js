@@ -412,4 +412,38 @@ describe("install", function () {
     assert.strictEqual(require.ready("./dir/d"), true);
     assert.strictEqual(require("./dir/d").id, "/dir/node_modules/e.js");
   });
+
+  it("avoids circular package.json resolution chains", function () {
+    main.makeInstaller()({
+      // Module a imports package b, whose package.json file delegates to
+      // package c, whose package.json file delegates to c's own
+      // directory, which contains an index.js file symbolically linked
+      // back to package b, whose index.js file takes precedence over
+      // package.json because we already examined b's package.json file.
+
+      a: function (require) {
+        assert.strictEqual(require("b").name, "/node_modules/b/index.js");
+      },
+
+      node_modules: {
+        b: {
+          "package.json": function (r, exports) {
+            exports.main = "c";
+          },
+
+          "index.js": function (r, exports, module) {
+            exports.name = module.id;
+          }
+        },
+
+        c: {
+          "package.json": function (r, exports) {
+            exports.main = ".";
+          },
+
+          "index.js": "b"
+        }
+      }
+    })("./a");
+  });
 });
