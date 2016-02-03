@@ -33,6 +33,7 @@
     "mocha": "^2.3.3",
     "uglifyjs": "^2.4.10"
   },
+  "license": "MIT",
   "engines": {
     "node": ">= 0.10"
   }
