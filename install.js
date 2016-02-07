@@ -54,6 +54,13 @@ makeInstaller = function (options) {
     return root.r;
   }
 
+  // Undocumented ability to expose private vars for debugging and experiments.
+  install._expose = function() {
+    return {
+      root: root
+    }
+  }
+
   function getOwn(obj, key) {
     return hasOwn.call(obj, key) && obj[key];
   }
