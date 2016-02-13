@@ -448,7 +448,7 @@ describe("install", function () {
   });
 
   it("provides __filename and __dirname", function (done) {
-    main.makeInstaller()({
+    var require = main.makeInstaller()({
       a: {
         b: {
           "c.js": function (r, e, m, __filename, __dirname) {
@@ -457,7 +457,15 @@ describe("install", function () {
             done();
           }
         }
+      },
+
+      "d.js": function (r, e, m, __filename, __dirname) {
+        assert.strictEqual(__filename, "/d.js");
+        assert.strictEqual(__dirname, "/");
       }
-    })("./a/b/c");
+    });
+
+    require("./a/b/c");
+    require("./d");
   });
 });
