@@ -199,7 +199,8 @@ makeInstaller = function (options) {
     if (isFunction(contents)) {
       var module = file.m;
       if (! hasOwn.call(module, "exports")) {
-        contents(file.r, module.exports = {}, module);
+        contents(file.r, module.exports = {}, module,
+                 file.m.id, file.p.m.id);
       }
       return module.exports;
     }

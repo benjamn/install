@@ -446,4 +446,18 @@ describe("install", function () {
       }
     })("./a");
   });
+
+  it("provides __filename and __dirname", function (done) {
+    main.makeInstaller()({
+      a: {
+        b: {
+          "c.js": function (r, e, m, __filename, __dirname) {
+            assert.strictEqual(__filename, "/a/b/c.js");
+            assert.strictEqual(__dirname, "/a/b");
+            done();
+          }
+        }
+      }
+    })("./a/b/c");
+  });
 });
