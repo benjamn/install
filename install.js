@@ -39,7 +39,8 @@ makeInstaller = function (options) {
 
   // The file object representing the root directory of the installed
   // module tree.
-  var root = new File({});
+  var root = new File;
+  var rootRequire = makeRequire(root);
 
   // Merges the given tree of directories and module factory functions
   // into the tree of installed modules and returns a require function
@@ -48,10 +49,10 @@ makeInstaller = function (options) {
     if (isObject(tree)) {
       fileMergeContents(root, tree);
       if (isFunction(onInstall)) {
-        onInstall(root.r);
+        onInstall(rootRequire);
       }
     }
-    return root.r;
+    return rootRequire;
   }
 
   function getOwn(obj, key) {
@@ -119,7 +120,7 @@ makeInstaller = function (options) {
   // entry for that child in its `.c` object.  This is important for
   // implementing anonymous files, and preventing child modules from using
   // `../relative/identifier` syntax to examine unrelated modules.
-  function File(contents, /*optional:*/ parent, name) {
+  function File(parent, name) {
     var file = this;
 
     // Link to the parent file.
@@ -133,28 +134,6 @@ makeInstaller = function (options) {
       parent && name ? parent.m.id + "/" + name : "",
       parent && parent.m
     );
-
-    // Queue for tracking required modules with unmet dependencies,
-    // inherited from the `parent`.
-    file.q = parent && parent.q;
-
-    // Each directory has its own bound version of the `require` function
-    // that can resolve relative identifiers. Non-directory Files inherit
-    // the require function of their parent directories, so we don't have
-    // to create a new require function every time we evaluate a module.
-    file.r = isObject(contents)
-      ? makeRequire(file)
-      : parent && parent.r;
-
-    // Set the initial value of `file.c` (the "contents" of the File).
-    fileMergeContents(file, contents);
-
-    // When the file is a directory, `file.rc` is an object mapping module
-    // identifiers to boolean ready statuses ("rc" is short for "ready
-    // cache"). This information can be shared by all files in the
-    // directory, because module resolution always has the same results
-    // for all files in a given directory.
-    file.rc = fileIsDirectory(file) && {};
   }
 
   // A file is ready if all of its dependencies are installed and ready.
@@ -175,15 +154,20 @@ makeInstaller = function (options) {
       } else if (isFunction(contents)) {
         var deps = contents.d;
         if (deps) {
-          var parentReadyCache = file.p.rc;
+          // When the file is a directory, `file.rc` is an object mapping
+          // module identifiers to boolean ready statuses ("rc" is short
+          // for "ready cache"). This information can be shared by all
+          // files in the directory, because module resolution always has
+          // the same results for all files in a given directory.
+          var dir = file.p;
+          dir.rc = dir.rc || {};
 
           result = deps.every(function (dep) {
-            // By storing the results of these lookups in `parentReadyCache`,
-            // we benefit when any other file in the same directory resolves
+            // By storing the results of these lookups in `readyCache`, we
+            // benefit when any other file in the same directory resolves
             // the same identifier.
-            return parentReadyCache[dep] =
-              parentReadyCache[dep] ||
-              fileReady(fileResolve(file.p, dep));
+            return dir.rc[dep] = dir.rc[dep] ||
+              fileReady(fileResolve(file, dep));
           });
         }
       }
@@ -199,9 +183,13 @@ makeInstaller = function (options) {
     if (isFunction(contents)) {
       var module = file.m;
       if (! hasOwn.call(module, "exports")) {
-        contents(file.r, module.exports = {}, module,
-                 file.m.id,
-                 file.p.m.id || "/");
+        contents(
+          file.r = file.r || makeRequire(file),
+          module.exports = {},
+          module,
+          file.m.id,
+          file.p.m.id || "/"
+        );
       }
       return module.exports;
     }
@@ -245,18 +233,13 @@ makeInstaller = function (options) {
     }
 
     if (contents) {
-      var fileContents = file.c = file.c || (
-        isObject(contents) ? {} : contents
-      );
-
+      file.c = file.c || (isObject(contents) ? {} : contents);
       if (isObject(contents) && fileIsDirectory(file)) {
         Object.keys(contents).forEach(function (key) {
-          var child = getOwn(fileContents, key);
-          if (child) {
-            fileMergeContents(child, contents[key]);
-          } else {
-            fileContents[key] = new File(contents[key], file, key);
-          }
+          fileMergeContents(
+            getOwn(file.c, key) || (file.c[key] = new File(file, key)),
+            contents[key]
+          );
         });
       }
     }

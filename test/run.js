@@ -332,9 +332,9 @@ describe("install", function () {
     var unknown = {};
 
     var install = main.makeInstaller({
-      fallback: function (id, directoryId, error) {
+      fallback: function (id, parentId, error) {
         assert.strictEqual(id, "unknown-module");
-        assert.strictEqual(directoryId, "/foo/bar");
+        assert.strictEqual(parentId, "/foo/bar/parent.js");
         assert.ok(error instanceof Error);
         return unknown;
       }
