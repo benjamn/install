@@ -138,44 +138,26 @@ makeInstaller = function (options) {
 
   // A file is ready if all of its dependencies are installed and ready.
   function fileReady(file) {
-    var result = !! file;
-    var contents = file && file.c;
-
-    if (contents && ! file.inReady) {
-      file.inReady = true;
-
-      if (isString(contents)) {
-        // This file is aliased (or symbolically linked) to the file
-        // obtained by resolving the contents string as a module
-        // identifier, so regard it as ready iff the resolved file exists
-        // and is ready.
-        result = fileReady(fileResolve(file, contents));
-
-      } else if (isFunction(contents)) {
-        var deps = contents.d;
-        if (deps) {
-          // When the file is a directory, `file.rc` is an object mapping
-          // module identifiers to boolean ready statuses ("rc" is short
-          // for "ready cache"). This information can be shared by all
-          // files in the directory, because module resolution always has
-          // the same results for all files in a given directory.
-          var dir = file.p;
-          dir.rc = dir.rc || {};
-
-          result = deps.every(function (dep) {
-            // By storing the results of these lookups in `readyCache`, we
-            // benefit when any other file in the same directory resolves
-            // the same identifier.
-            return dir.rc[dep] = dir.rc[dep] ||
-              fileReady(fileResolve(file, dep));
-          });
-        }
-      }
-
-      file.inReady = false;
-    }
-
-    return result;
+    return file && (
+      file.ready || ( // Return true immediately if already ready.
+        file.ready = true, // Short-circuit circular fileReady calls.
+        file.ready = // Now compute the actual value of file.ready.
+          // The current file is aliased (or symbolically linked) to the
+          // file obtained by resolving the `file.c` string as a module
+          // identifier, so regard it as ready iff the resolved file exists
+          // and is ready.
+          isString(file.c) ? fileReady(fileResolve(file, file.c)) :
+          // Here file.c is a module factory function with an array of
+          // dependencies `.d` that must be ready before the current file
+          // can be considered ready.
+          isFunction(file.c) && file.c.d.every(function (dep, i) {
+            if (fileReady(fileResolve(file, dep))) {
+              delete file.c.d[i]; // Ignore this dependency once ready.
+              return true;
+            }
+          })
+      )
+    );
   }
 
   function fileEvaluate(file) {
