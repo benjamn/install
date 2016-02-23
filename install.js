@@ -42,9 +42,9 @@ makeInstaller = function (options) {
   // Merges the given tree of directories and module factory functions
   // into the tree of installed modules and returns a require function
   // that behaves as if called from a module in the root directory.
-  function install(tree) {
+  function install(tree, options) {
     if (isObject(tree)) {
-      fileMergeContents(root, tree);
+      fileMergeContents(root, tree, options);
       if (isFunction(onInstall)) {
         onInstall(rootRequire);
       }
@@ -180,7 +180,7 @@ makeInstaller = function (options) {
     return file && isObject(file.c);
   }
 
-  function fileMergeContents(file, contents) {
+  function fileMergeContents(file, contents, options) {
     // If contents is an array of strings and functions, return the last
     // function with a `.d` property containing all the strings.
     if (Array.isArray(contents)) {
@@ -216,10 +216,13 @@ makeInstaller = function (options) {
       file.c = file.c || (isObject(contents) ? {} : contents);
       if (isObject(contents) && fileIsDirectory(file)) {
         Object.keys(contents).forEach(function (key) {
-          fileMergeContents(
-            getOwn(file.c, key) || (file.c[key] = new File(file, key)),
-            contents[key]
-          );
+          var child = getOwn(file.c, key);
+          if (! child) {
+            child = file.c[key] = new File(file, key);
+            child.o = options;
+          }
+
+          fileMergeContents(child, contents[key], options);
         });
       }
     }
