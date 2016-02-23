@@ -228,7 +228,7 @@ makeInstaller = function (options) {
     }
   }
 
-  function fileAppendIdPart(file, part, isLastPart) {
+  function fileAppendIdPart(file, part, extensions) {
     // Always append relative to a directory.
     while (file && ! fileIsDirectory(file)) {
       file = file.p;
@@ -247,7 +247,7 @@ makeInstaller = function (options) {
     // Only consider multiple file extensions if this part is the last
     // part of a module identifier and not equal to `.` or `..`, and there
     // was no exact match or the exact match was a directory.
-    if (isLastPart && (! exactChild || fileIsDirectory(exactChild))) {
+    if (extensions && (! exactChild || fileIsDirectory(exactChild))) {
       for (var e = 0; e < extensions.length; ++e) {
         var child = getOwn(file.c, part + extensions[e]);
         if (child) {
@@ -261,11 +261,16 @@ makeInstaller = function (options) {
 
   function fileAppendId(file, id) {
     var parts = id.split("/");
+    var exts = file.o && file.o.extensions || extensions;
+
     // Use `Array.prototype.every` to terminate iteration early if
     // `fileAppendIdPart` returns a falsy value.
     parts.every(function (part, i) {
-      return file = fileAppendIdPart(file, part, i === parts.length - 1);
+      return file = i < parts.length - 1
+        ? fileAppendIdPart(file, part)
+        : fileAppendIdPart(file, part, exts);
     });
+
     return file;
   }
 

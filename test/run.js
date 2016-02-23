@@ -465,4 +465,19 @@ describe("install", function () {
     require("./a/b/c");
     require("./d");
   });
+
+  it("allows alternate extensions", function (done) {
+    main.makeInstaller()({
+      "a.js": function (require) {
+        assert.strictEqual(require("./b").name, "/b.foo");
+        done();
+      },
+
+      "b.foo": function (r, exports, module) {
+        exports.name = module.id;
+      }
+    }, {
+      extensions: [".js", ".json", ".foo"]
+    })("./a");
+  });
 });
