@@ -30,12 +30,9 @@ makeInstaller = function (options) {
   // require.ensure and require.promise.
   var requireMethods = options.requireMethods;
 
-  // Sentinel returned by fileEvaluate when module resolution fails.
-  var MISSING = {};
-
   // Nothing special about MISSING.hasOwnProperty, except that it's fewer
   // characters than Object.prototype.hasOwnProperty after minification.
-  var hasOwn = MISSING.hasOwnProperty;
+  var hasOwn = {}.hasOwnProperty;
 
   // The file object representing the root directory of the installed
   // module tree.
@@ -73,18 +70,22 @@ makeInstaller = function (options) {
 
   function makeRequire(file) {
     function require(id) {
-      var result = fileEvaluate(fileResolve(file, id));
-      if (result === MISSING) {
-        var error = new Error("Cannot find module '" + id + "'");
-        if (isFunction(fallback)) {
-          result = fallback(
-            id, // The missing module identifier.
-            file.m.id, // The path of the enclosing directory.
-            error // The error we would have thrown.
-          );
-        } else throw error;
+      var result = fileResolve(file, id);
+      if (result) {
+        return fileEvaluate(result);
       }
-      return result;
+
+      var error = new Error("Cannot find module '" + id + "'");
+
+      if (isFunction(fallback)) {
+        return fallback(
+          id, // The missing module identifier.
+          file.m.id, // The path of the requiring file.
+          error // The error we would have thrown.
+        );
+      }
+
+      throw error;
     }
 
     // A function that immediately returns true iff all the transitive
@@ -162,20 +163,17 @@ makeInstaller = function (options) {
 
   function fileEvaluate(file) {
     var contents = file && file.c;
-    if (isFunction(contents)) {
-      var module = file.m;
-      if (! hasOwn.call(module, "exports")) {
-        contents(
-          file.r = file.r || makeRequire(file),
-          module.exports = {},
-          module,
-          file.m.id,
-          file.p.m.id || "/"
-        );
-      }
-      return module.exports;
+    var module = file.m;
+    if (! hasOwn.call(module, "exports")) {
+      contents(
+        file.r = file.r || makeRequire(file),
+        module.exports = {},
+        module,
+        file.m.id,
+        file.p.m.id || "/"
+      );
     }
-    return MISSING;
+    return module.exports;
   }
 
   function fileIsDirectory(file) {
@@ -296,17 +294,16 @@ makeInstaller = function (options) {
       if (seenDirFiles.indexOf(file) < 0) {
         seenDirFiles.push(file);
 
-        // If `package.json` does not exist, `fileEvaluate` will return
-        // the `MISSING` object, which has no `.main` property.
-        var pkg = fileEvaluate(fileAppendIdPart(file, "package.json"));
-        if (pkg && isString(pkg.main)) {
+        var pkgJsonFile = fileAppendIdPart(file, "package.json");
+        var main = pkgJsonFile && fileEvaluate(pkgJsonFile).main;
+        if (isString(main)) {
           // The "main" field of package.json does not have to begin with
           // ./ to be considered relative, so first we try simply
           // appending it to the directory path before falling back to a
           // full fileResolve, which might return a package from a
           // node_modules directory.
-          file = fileAppendId(file, pkg.main) ||
-            fileResolve(file, pkg.main, seenDirFiles);
+          file = fileAppendId(file, main) ||
+            fileResolve(file, main, seenDirFiles);
 
           if (file) {
             // The fileAppendId call above may have returned a directory,
