@@ -262,7 +262,7 @@ describe("install", function () {
     assert.strictEqual(require("./undefined"), void(0));
   });
 
-  it("copes with long dependency chains", function (done) {
+  it("copes with long dependency chains", function () {
     var n = 500;
     var count = 0;
     var install = main.makeInstaller({
@@ -286,17 +286,14 @@ describe("install", function () {
       })(i, {});
     }
 
-    var lastId = "./m" + (i - 1);
-    install().ensure(lastId, function (require) {
-      assert.strictEqual(n, require(lastId).value);
-      done();
-    });
-
-    install({
+    var require = install({
       m0: function (require, exports) {
         exports.value = 0;
       }
     });
+
+    var lastId = "./m" + (i - 1);
+    assert.strictEqual(require(lastId).value, n);
   });
 
   it("prefers fuzzy files to exact directories", function () {
