@@ -43,7 +43,7 @@ makeInstaller = function (options) {
 
   // The file object representing the root directory of the installed
   // module tree.
-  var root = new File;
+  var root = new File("/");
   var rootRequire = makeRequire(root);
 
   // Merges the given tree of directories and module factory functions
@@ -128,7 +128,7 @@ makeInstaller = function (options) {
   // entry for that child in its `.c` object.  This is important for
   // implementing anonymous files, and preventing child modules from using
   // `../relative/identifier` syntax to examine unrelated modules.
-  function File(parent, name) {
+  function File(name, parent) {
     var file = this;
 
     // Link to the parent file.
@@ -139,7 +139,7 @@ makeInstaller = function (options) {
     file.m = new Module(
       // If this file was created with `name`, join it with `parent.m.id`
       // to generate a module identifier.
-      parent && name ? parent.m.id + "/" + name : "",
+      (parent ? parent.m.id.replace(/\/*$/, "/") : "") + name,
       parent && parent.m
     );
   }
@@ -177,7 +177,7 @@ makeInstaller = function (options) {
         module.exports = {},
         module,
         file.m.id,
-        file.p.m.id || "/"
+        file.p.m.id
       );
     }
     return module.exports;
@@ -225,7 +225,7 @@ makeInstaller = function (options) {
         Object.keys(contents).forEach(function (key) {
           var child = getOwn(file.c, key);
           if (! child) {
-            child = file.c[key] = new File(file, key);
+            child = file.c[key] = new File(key, file);
             child.o = options;
           }
 
