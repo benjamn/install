@@ -17,6 +17,13 @@ makeInstaller = function (options) {
   // new modules are installed.
   var onInstall = options.onInstall;
 
+  // If defined, the options.override function will be called before
+  // looking up any top-level package identifiers in node_modules
+  // directories. It can either return a string to provide an alternate
+  // package identifier, or a non-string value to prevent the lookup from
+  // proceeding.
+  var override = options.override;
+
   // If defined, the options.fallback function will be called when no
   // installed module is found for a required module identifier. Often
   // options.fallback will be implemented in terms of the native Node
@@ -341,9 +348,18 @@ makeInstaller = function (options) {
   };
 
   function nodeModulesLookup(file, id) {
-    return fileIsDirectory(file) &&
-      fileAppendId(file, "node_modules/" + id) ||
-      (file.p && nodeModulesLookup(file.p, id));
+    if (isFunction(override)) {
+      id = override(id, file.m.id);
+    }
+
+    if (isString(id)) {
+      for (var resolved; file && ! resolved; file = file.p) {
+        resolved = fileIsDirectory(file) &&
+          fileAppendId(file, "node_modules/" + id);
+      }
+
+      return resolved;
+    }
   }
 
   return install;

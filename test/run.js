@@ -480,4 +480,80 @@ describe("install", function () {
       extensions: [".js", ".json", ".foo"]
     })("./a");
   });
+
+  it("allows package overrides and fallbacks", function () {
+    var install = main.makeInstaller({
+      override: function (id, parentId) {
+        assert.strictEqual(parentId, "/parent.js");
+
+        var parts = id.split("/");
+
+        if (parts[0] === "forbidden") {
+          return false;
+        }
+
+        if (parts[0] === "overridden") {
+          parts[0] = "alternate";
+          return parts.join("/");
+        }
+
+        return id;
+      },
+
+      fallback: function (id, parentId, error) {
+        assert.strictEqual(id, "forbidden");
+        assert.strictEqual(parentId, "/parent.js");
+        throw error;
+      }
+    });
+
+    var require = install({
+      "parent.js": ["forbidden", "overridden", "alternate", function (require, exports, module) {
+        var error;
+        try {
+          require("forbidden");
+        } catch (e) {
+          error = e;
+        }
+        assert.ok(error instanceof Error);
+        assert.strictEqual(error.message, "Cannot find module 'forbidden'");
+
+        assert.strictEqual(
+          require("overridden").name,
+          "/node_modules/alternate/index.js"
+        );
+
+        assert.strictEqual(
+          require("overridden/index").name,
+          "/node_modules/alternate/index.js"
+        );
+
+        assert.strictEqual(
+          require("alternate").name,
+          "/node_modules/alternate/index.js"
+        );
+
+        assert.strictEqual(
+          require(module.id),
+          exports
+        );
+      }],
+
+      node_modules: {
+        "forbidden": {
+          "index.js": function () {
+            throw new Error("package should have been forbidden");
+          }
+        },
+
+        "alternate": {
+          "index.js": function (require, exports, module) {
+            exports.name = module.id;
+          }
+        }
+      }
+    });
+
+    require("./parent");
+  });
 });
