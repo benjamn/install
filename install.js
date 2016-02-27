@@ -95,6 +95,12 @@ makeInstaller = function (options) {
       throw error;
     }
 
+    require.resolve = function (id) {
+      var f = fileResolve(file, id);
+      if (f) return f.m.id;
+      throw new Error("Cannot find module '" + id + "'");
+    };
+
     // A function that immediately returns true iff all the transitive
     // dependencies of the module identified by id have been installed.
     // This function can be used with options.onInstall to implement

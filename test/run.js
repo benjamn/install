@@ -408,6 +408,10 @@ describe("install", function () {
 
     assert.strictEqual(require.ready("./dir/d"), true);
     assert.strictEqual(require("./dir/d").id, "/dir/node_modules/e.js");
+    assert.strictEqual(
+      require.resolve("./dir/d"),
+      "/dir/node_modules/e.js"
+    );
   });
 
   it("avoids circular package.json resolution chains", function () {
