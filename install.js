@@ -43,7 +43,7 @@ makeInstaller = function (options) {
 
   // The file object representing the root directory of the installed
   // module tree.
-  var root = new File("/");
+  var root = new File("/", new File("global"));
   var rootRequire = makeRequire(root);
 
   // Merges the given tree of directories and module factory functions
@@ -142,12 +142,7 @@ makeInstaller = function (options) {
 
     // The module object for this File, which will eventually boast an
     // .exports property when/if the file is evaluated.
-    file.m = new Module(
-      // If this file was created with `name`, join it with `parent.m.id`
-      // to generate a module identifier.
-      (parent ? parent.m.id.replace(/\/*$/, "/") : "") + name,
-      parent && parent.m
-    );
+    file.m = new Module(name, parent && parent.m);
   }
 
   // A file is ready if all of its dependencies are installed and ready.
@@ -229,10 +224,19 @@ makeInstaller = function (options) {
       file.c = file.c || (isObject(contents) ? {} : contents);
       if (isObject(contents) && fileIsDirectory(file)) {
         Object.keys(contents).forEach(function (key) {
-          var child = getOwn(file.c, key);
-          if (! child) {
-            child = file.c[key] = new File(key, file);
-            child.o = options;
+          if (key === "..") {
+            child = file.p;
+
+          } else {
+            var child = getOwn(file.c, key);
+            if (! child) {
+              child = file.c[key] = new File(
+                file.m.id.replace(/\/*$/, "/") + key,
+                file
+              );
+
+              child.o = options;
+            }
           }
 
           fileMergeContents(child, contents[key], options);

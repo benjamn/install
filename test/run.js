@@ -560,4 +560,29 @@ describe("install", function () {
 
     require("./parent");
   });
+
+  it("allows global installation", function () {
+    var install = main.makeInstaller();
+
+    var require = install({
+      node_modules: {
+        a: {
+          "index.js": function (r, exports) {
+            exports.value = "normal";
+          }
+        }
+      },
+
+      "..": {
+        node_modules: {
+          "a.js": function (r, exports) {
+            exports.value = "global";
+          }
+        }
+      }
+    });
+
+    assert.strictEqual(require("a").value, "normal");
+    assert.strictEqual(require("a.js").value, "global");
+  });
 });
