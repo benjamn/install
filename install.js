@@ -43,7 +43,7 @@ makeInstaller = function (options) {
 
   // The file object representing the root directory of the installed
   // module tree.
-  var root = new File("/", new File("global"));
+  var root = new File("/", new File("/.."));
   var rootRequire = makeRequire(root);
 
   // Merges the given tree of directories and module factory functions

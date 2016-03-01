@@ -584,5 +584,9 @@ describe("install", function () {
 
     assert.strictEqual(require("a").value, "normal");
     assert.strictEqual(require("a.js").value, "global");
+    assert.strictEqual(
+      require.resolve("a.js"),
+      "/../node_modules/a.js"
+    );
   });
 });
