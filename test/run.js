@@ -589,4 +589,38 @@ describe("install", function () {
       "/../node_modules/a.js"
     );
   });
+
+  it("supports module.parent", function (done) {
+    var install = main.makeInstaller();
+    var require = install({
+      a: function (require, exports, module) {
+        assert.strictEqual(module.parent.id, "/");
+        assert.strictEqual(typeof module.parent.parent, "undefined");
+        require("b");
+      },
+
+      node_modules: {
+        b: {
+          "index.js": function (require, exports, module) {
+            assert.strictEqual(module.parent.id, "/a");
+            require("c");
+          }
+        },
+
+        c: {
+          "package.json": function (require, exports, module) {
+            exports.main = "final.js";
+          },
+
+          "final.js": function (require, exports, module) {
+            assert.strictEqual(module.parent.id, "/node_modules/b/index.js");
+            assert.strictEqual(module.parent.parent.id, "/a");
+            done();
+          }
+        }
+      }
+    });
+
+    require("./a");
+  });
 });

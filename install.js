@@ -8,9 +8,8 @@ makeInstaller = function (options) {
   // This constructor will be used to instantiate the module objects
   // passed to module factory functions (i.e. the third argument after
   // require and exports).
-  var Module = options.Module || function Module(id, parent) {
+  var Module = options.Module || function Module(id) {
     this.id = id;
-    this.parent = parent;
   };
 
   // If defined, the options.onInstall function will be called any time
@@ -79,7 +78,7 @@ makeInstaller = function (options) {
     function require(id) {
       var result = fileResolve(file, id);
       if (result) {
-        return fileEvaluate(result);
+        return fileEvaluate(result, file);
       }
 
       var error = new Error("Cannot find module '" + id + "'");
@@ -142,7 +141,7 @@ makeInstaller = function (options) {
 
     // The module object for this File, which will eventually boast an
     // .exports property when/if the file is evaluated.
-    file.m = new Module(name, parent && parent.m);
+    file.m = new Module(name);
   }
 
   // A file is ready if all of its dependencies are installed and ready.
@@ -169,10 +168,11 @@ makeInstaller = function (options) {
     );
   }
 
-  function fileEvaluate(file) {
+  function fileEvaluate(file, parent) {
     var contents = file && file.c;
     var module = file.m;
     if (! hasOwn.call(module, "exports")) {
+      module.parent = parent && parent.m;
       contents(
         file.r = file.r || makeRequire(file),
         module.exports = {},
