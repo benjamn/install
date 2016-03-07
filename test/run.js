@@ -630,7 +630,7 @@ describe("install", function () {
     }
 
     Module.prototype.useNode = function () {
-      if (this.id.endsWith("b")) {
+      if (this.id.split("/").pop() === "b") {
         assert.strictEqual(typeof this.exports, "undefined");
         this.exports = {
           usedNode: true
