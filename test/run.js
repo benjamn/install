@@ -623,4 +623,38 @@ describe("install", function () {
 
     require("./a");
   });
+
+  it("respects Module.prototype.useNode", function () {
+    function Module(id) {
+      this.id = id;
+    }
+
+    Module.prototype.useNode = function () {
+      if (this.id.endsWith("b")) {
+        assert.strictEqual(typeof this.exports, "undefined");
+        this.exports = {
+          usedNode: true
+        };
+        return true;
+      }
+    };
+
+    var install = main.makeInstaller({
+      Module: Module
+    });
+
+    var require = install({
+      a: function (require, exports) {
+        exports.b = require("./b");
+      },
+
+      b: function (r, exports) {
+        exports.usedNode = false;
+      }
+    });
+
+    assert.strictEqual(require("./a").b.usedNode, true);
+    assert.strictEqual(require("./b").usedNode, true);
+    assert.strictEqual(require("./a").b, require("./b"));
+  });
 });

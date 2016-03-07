@@ -173,13 +173,18 @@ makeInstaller = function (options) {
     var module = file.m;
     if (! hasOwn.call(module, "exports")) {
       module.parent = parent && parent.m;
-      contents(
-        file.r = file.r || makeRequire(file),
-        module.exports = {},
-        module,
-        file.m.id,
-        file.p.m.id
-      );
+      // If a Module.prototype.useNode method is defined, give it a chance
+      // to define module.exports based on module.id using Node.
+      if (! isFunction(module.useNode) ||
+          ! module.useNode()) {
+        contents(
+          file.r = file.r || makeRequire(file),
+          module.exports = {},
+          module,
+          file.m.id,
+          file.p.m.id
+        );
+      }
     }
     return module.exports;
   }
