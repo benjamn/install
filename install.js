@@ -30,13 +30,6 @@ makeInstaller = function (options) {
   // require function, which has the ability to load binary modules.
   var fallback = options.fallback;
 
-  // Whenever a new require function is created in the makeRequire
-  // function below, any methods contained by options.requireMethods will
-  // be bound and attached as methods to that function object. This option
-  // is intended to support user-defined require.* extensions like
-  // require.ensure and require.promise.
-  var requireMethods = options.requireMethods;
-
   // Nothing special about MISSING.hasOwnProperty, except that it's fewer
   // characters than Object.prototype.hasOwnProperty after minification.
   var hasOwn = {}.hasOwnProperty;
@@ -100,22 +93,6 @@ makeInstaller = function (options) {
       if (f) return f.m.id;
       throw new Error("Cannot find module '" + id + "'");
     };
-
-    // A function that immediately returns true iff all the transitive
-    // dependencies of the module identified by id have been installed.
-    // This function can be used with options.onInstall to implement
-    // asynchronous module loading APIs like require.ensure.
-    require.ready = function (id) {
-      return fileReady(fileResolve(file, id));
-    };
-
-    if (requireMethods) {
-      Object.keys(requireMethods).forEach(function (name) {
-        if (isFunction(requireMethods[name])) {
-          require[name] = requireMethods[name].bind(require);
-        }
-      });
-    }
 
     return require;
   }

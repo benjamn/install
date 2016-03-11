@@ -1,5 +1,5 @@
 var assert = require("assert");
-var main = require("../ensure");
+var main = require("../install.js");
 
 describe("install", function () {
   it("binds this to global", function () {
@@ -83,58 +83,6 @@ describe("install", function () {
     })("./path/to/n");
   });
 
-  it("permits asynchronous require", function (done) {
-    var install = main.makeInstaller({
-      defer: process.nextTick
-    });
-
-    var order = [];
-
-    // Calling install with an array of module identifiers and a
-    // module factory function registers that module as an entry point
-    // that should be evaluated once all of its depedencies have been
-    // installed. Note that those dependencies may not have been evaluated
-    // before this module is evaluated.
-
-    install().ensure([
-      "./dep1" // Unmet dependency.
-    ], function (require) {
-      order.push("root");
-      var dep1 = require("./dep1");
-      assert.deepEqual(dep1, { dep2: true });
-      assert.deepEqual(order, ["package.json", "root", "dep2"]);
-      assert.deepEqual(require("./dep1/dep3"), { dep3: true });
-      assert.deepEqual(order, ["package.json", "root", "dep2", "dep3"]);
-      done();
-    });
-
-    install({
-      dep1: {
-        "package.json": function (require, exports) {
-          order.push("package.json");
-          exports.main = "./dep2";
-        },
-        "dep2.json": [
-          "./dep2", // Self dependency.
-          "./dep3", // Unmet dependency.
-          function (require, exports) {
-            order.push("dep2");
-            exports.dep2 = true;
-          }
-        ]
-      }
-    });
-
-    install({
-      dep1: {
-        "dep3.js": function (require, exports, module) {
-          order.push("dep3");
-          exports.dep3 = true;
-        }
-      }
-    });
-  });
-
   it("supports global modules", function () {
     var install = main.makeInstaller();
 
@@ -178,54 +126,6 @@ describe("install", function () {
         }
       }
     })("./app/index2");
-  });
-
-  it("allows asynchronous packages", function (done) {
-    var install = main.makeInstaller();
-
-    install({
-      node_modules: {
-        testPackage1: {
-          "index.js": function (r, exports) {
-            exports.testPackage = 1;
-          }
-        }
-      }
-    }).ensure([
-      "testPackage1", // Met dependency.
-      "testPackage2", // Unmet dependency.
-    ], function (require, exports) {
-      assert.deepEqual(require("testPackage1"), {
-        testPackage: 1
-      });
-
-      assert.deepEqual(require("testPackage2"), {
-        testPackage: 2
-      });
-
-      require.ensure(
-        "testPackage2",
-        function (require) {
-          assert.deepEqual(require("testPackage1"), {
-            testPackage: 1
-          });
-
-          done();
-        }
-      );
-    });
-
-    // Finally, turn testPackage2 into a valid package by adding an
-    // index.js file.
-    install({
-      node_modules: {
-        testPackage2: {
-          "index.js": function (r, exports) {
-            exports.testPackage = 2;
-          }
-        }
-      }
-    });
   });
 
   it("allows any value for module.exports", function () {
@@ -381,8 +281,6 @@ describe("install", function () {
     assert.strictEqual(b, c);
     assert.strictEqual(c.id, "/dir/c");
 
-    assert.strictEqual(require.ready("./dir/d"), false);
-
     install({
       dir: {
         node_modules: {
@@ -394,8 +292,6 @@ describe("install", function () {
       }
     });
 
-    assert.strictEqual(require.ready("./dir/d"), false);
-
     install({
       dir: {
         node_modules: {
@@ -406,7 +302,6 @@ describe("install", function () {
       }
     });
 
-    assert.strictEqual(require.ready("./dir/d"), true);
     assert.strictEqual(require("./dir/d").id, "/dir/node_modules/e.js");
     assert.strictEqual(
       require.resolve("./dir/d"),
