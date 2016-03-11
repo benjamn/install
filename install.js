@@ -10,6 +10,7 @@ makeInstaller = function (options) {
   // require and exports).
   var Module = options.Module || function Module(id) {
     this.id = id;
+    this.children = [];
   };
 
   // If defined, the options.onInstall function will be called any time
@@ -78,7 +79,7 @@ makeInstaller = function (options) {
     function require(id) {
       var result = fileResolve(file, id);
       if (result) {
-        return fileEvaluate(result, file);
+        return fileEvaluate(result, file.m);
       }
 
       var error = new Error("Cannot find module '" + id + "'");
@@ -144,35 +145,18 @@ makeInstaller = function (options) {
     file.m = new Module(name);
   }
 
-  // A file is ready if all of its dependencies are installed and ready.
-  function fileReady(file) {
-    return file && (
-      file.ready || ( // Return true immediately if already ready.
-        file.ready = true, // Short-circuit circular fileReady calls.
-        file.ready = // Now compute the actual value of file.ready.
-          // The current file is aliased (or symbolically linked) to the
-          // file obtained by resolving the `file.c` string as a module
-          // identifier, so regard it as ready iff the resolved file exists
-          // and is ready.
-          isString(file.c) ? fileReady(fileResolve(file, file.c)) :
-          // Here file.c is a module factory function with an array of
-          // dependencies `.d` that must be ready before the current file
-          // can be considered ready.
-          isFunction(file.c) && file.c.d.every(function (dep, i) {
-            if (fileReady(fileResolve(file, dep))) {
-              delete file.c.d[i]; // Ignore this dependency once ready.
-              return true;
-            }
-          })
-      )
-    );
-  }
-
-  function fileEvaluate(file, parent) {
+  function fileEvaluate(file, parentModule) {
     var contents = file && file.c;
     var module = file.m;
     if (! hasOwn.call(module, "exports")) {
-      module.parent = parent && parent.m;
+      if (parentModule) {
+        module.parent = parentModule;
+        var children = parentModule.children;
+        if (Array.isArray(children)) {
+          children.push(module);
+        }
+      }
+
       // If a Module.prototype.useNode method is defined, give it a chance
       // to define module.exports based on module.id using Node.
       if (! isFunction(module.useNode) ||
