@@ -369,6 +369,7 @@ describe("install", function () {
     main.makeInstaller()({
       "a.js": function (require) {
         assert.strictEqual(require("./b").name, "/b.foo");
+        assert.strictEqual(require("/b").name, "/b.foo");
         done();
       },
 
