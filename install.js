@@ -5,14 +5,6 @@ makeInstaller = function (options) {
   // if they do not exactly match an installed module.
   var defaultExtensions = options.extensions || [".js", ".json"];
 
-  // This constructor will be used to instantiate the module objects
-  // passed to module factory functions (i.e. the third argument after
-  // require and exports).
-  var Module = options.Module || function Module(id) {
-    this.id = id;
-    this.children = [];
-  };
-
   // If defined, the options.onInstall function will be called any time
   // new modules are installed.
   var onInstall = options.onInstall;
@@ -51,6 +43,17 @@ makeInstaller = function (options) {
     }
     return rootRequire;
   }
+
+  // This constructor will be used to instantiate the module objects
+  // passed to module factory functions (i.e. the third argument after
+  // require and exports), and is exposed as install.Module in case the
+  // caller of makeInstaller wishes to modify Module.prototype.
+  function Module(id) {
+    this.id = id;
+    this.children = [];
+  }
+
+  install.Module = Module;
 
   function getOwn(obj, key) {
     return hasOwn.call(obj, key) && obj[key];

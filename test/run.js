@@ -521,11 +521,9 @@ describe("install", function () {
   });
 
   it("respects Module.prototype.useNode", function () {
-    function Module(id) {
-      this.id = id;
-    }
+    var install = main.makeInstaller();
 
-    Module.prototype.useNode = function () {
+    install.Module.prototype.useNode = function () {
       if (this.id.split("/").pop() === "b") {
         assert.strictEqual(typeof this.exports, "undefined");
         this.exports = {
@@ -534,10 +532,6 @@ describe("install", function () {
         return true;
       }
     };
-
-    var install = main.makeInstaller({
-      Module: Module
-    });
 
     var require = install({
       a: function (require, exports) {
