@@ -172,7 +172,8 @@ makeInstaller = function (options) {
     Object.keys(ms).forEach(function (key) {
       ms[key].forEach(function (setter) {
         var value = module.exports[key];
-        if (! hasOwn.call(setter, "last") ||
+        if (isFunction(setter) &&
+            ! hasOwn.call(setter, "last") ||
             value !== setter.last) {
           setter(setter.last = value);
         }
