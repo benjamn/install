@@ -20,41 +20,89 @@ From GitHub:
 Usage
 ---
 
-When evaluated, the contents of install.js create a global function called `install`. This function is the only external interface to the module loader, and it can be called in two ways.
+The first step is to create an `install` function by calling the
+`makeInstaller` method. Note that all of the options described below are
+optional:
 
-The first way is to pass a module identifier string followed by a module factory function:
 ```js
-install("some/module/id", function(require, exports, module) {
-    // CommonJS module code goes here.
+var install = require("install").makeInstaller({
+  // Optional list of file extensions to be appended to required module
+  // identifiers if they do not exactly match an installed module.
+  extensions: [".js", ".json"],
 
-    // For example:
-    exports.setImmediate = function(callback) {
-        return setTimeout(callback, 0);
-    };
+  // If defined, the options.onInstall function will be called any time
+  // new modules are installed.
+  onInstall,
+
+  // If defined, the options.override function will be called before
+  // looking up any top-level package identifiers in node_modules
+  // directories. It can return either a string to provide an alternate
+  // package identifier or a non-string value to prevent the lookup from
+  // proceeding.
+  override,
+
+  // If defined, the options.fallback function will be called when no
+  // installed module is found for a required module identifier. Often
+  // options.fallback will be implemented in terms of the native Node
+  // require function, which has the ability to load binary modules.
+  fallback
 });
 ```
-This makes the module available for requirement, but does not evaluate the contents of the module until the first time another module calls `require("some/module/id")`.
 
-The second way to invoke `install` is to omit the module identifier and pass an anonymous module factory function:
+The second step is to install some modules by passing a nested tree of
+objects and functions to the `install` function:
+
 ```js
-install(function(require) {
-    // Code that uses require goes here.
+var require = install({
+  "main.js": function (require, exports, module) {
+    // On the client, the "assert" module should be install-ed just like
+    // any other module. On the server, since "assert" is a built-in Node
+    // module, it may make sense to let the options.fallback function
+    // handle such requirements. Both ways work equally well.
+    var assert = require("assert");
 
-    // For example:
-    require("some/module/id").setImmediate(function() {
-        console.log("setImmediate fired");
-    });
+    assert.strictEqual(
+      // This require function uses the same lookup rules as Node, so it
+      // will find "package" in the "node_modules" directory below.
+      require("package").name,
+      "/node_modules/package/entry.js"
+    );
+
+    exports.name = module.id;
+  },
+
+  node_modules: {
+    package: {
+      // If package.json is not defined, a module called "index.js" will
+      // be used as the main entry point for the package. Otherwise the
+      // exports.main property will identify the entry point.
+      "package.json": function (require, exports, module) {
+        exports.name = "package";
+        exports.version = "0.1.0";
+        exports.main = "entry.js";
+      },
+
+      "entry.js": function (require, exports, module) {
+        exports.name = module.id;
+      }
+    }
+  }
 });
 ```
-Anonymous modules are executed in order of installation, as soon as their requirements have been installed. Note that such modules do not have exports objects, because anonymous modules cannot be required.
 
-Sugar
----
-If a named module has no requirements and does not need its own scope, the following shorthand can be used to install the module:
+Note that the `install` function merely installs modules without
+evaluating them, so the third and final step is to `require` any entry
+point modules that you wish to evaluate:
+
 ```js
-install("simple/module", { exports: {
-    one: 1,
-    two: 2,
-    buckle: "my shoe"
-}});
+console.log(require("./main").name);
+// => "/main.js"
 ```
+
+This is the "root" `require` function returned by the `install`
+function. If you're using the `install` package in a CommonJS environment
+like Node, be careful that you don't overwrite the `require` function
+provided by that system.
+
+Many more examples of how to use the `install` package can be found in the
+[tests](https://github.com/benjamn/install/blob/master/test/run.js).
