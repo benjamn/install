@@ -15,7 +15,7 @@
     "packager",
     "install"
   ],
-  "version": "0.6.1",
+  "version": "0.6.2",
   "license": "MIT",
   "homepage": "http://github.com/benjamn/install",
   "repository": {
