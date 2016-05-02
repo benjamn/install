@@ -146,6 +146,8 @@ makeInstaller = function (options) {
           file.p.m.id
         );
       }
+
+      module.loaded = true;
     }
     return module.exports;
   }
