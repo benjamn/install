@@ -72,10 +72,10 @@ makeInstaller = function (options) {
   }
 
   function makeRequire(file) {
-    function require(id) {
+    function require(id, setters) {
       var result = fileResolve(file, id);
       if (result) {
-        return fileEvaluate(result, file.m);
+        return fileEvaluate(result, file.m, setters);
       }
 
       var error = new Error("Cannot find module '" + id + "'");
@@ -125,9 +125,10 @@ makeInstaller = function (options) {
     file.m = new Module(name);
   }
 
-  function fileEvaluate(file, parentModule) {
+  function fileEvaluate(file, parentModule, setters) {
     var contents = file && file.c;
     var module = file.m;
+
     if (! hasOwn.call(module, "exports")) {
       if (parentModule) {
         module.parent = parentModule;
@@ -152,7 +153,35 @@ makeInstaller = function (options) {
 
       module.loaded = true;
     }
+
+    runModuleSetters(module, setters);
+
     return module.exports;
+  }
+
+  function runModuleSetters(module, setters) {
+    var ms = module.setters = module.setters || {};
+
+    if (isObject(setters)) {
+      Object.keys(setters).forEach(function (key) {
+        ms[key] = ms[key] || [];
+        ms[key].push(setters[key]);
+      });
+    }
+
+    Object.keys(ms).forEach(function (key) {
+      ms[key].forEach(function (setter) {
+        var value = module.exports[key];
+        if (! hasOwn.call(setter, "last") ||
+            value !== setter.last) {
+          setter(setter.last = value);
+        }
+      });
+    });
+
+    if (module.loaded) {
+      delete module.setters;
+    }
   }
 
   function fileIsDirectory(file) {

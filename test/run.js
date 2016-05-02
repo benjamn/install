@@ -547,4 +547,62 @@ describe("install", function () {
     assert.strictEqual(require("./b").usedNode, true);
     assert.strictEqual(require("./a").b, require("./b"));
   });
+
+  it("runs setters", function () {
+    var install = main.makeInstaller();
+    var markers = [];
+    var require = install({
+      a: function (require, exports) {
+        exports.one = 1;
+
+        require("./b", {
+          one: function (v) {
+            markers.push("ab1", v);
+          },
+
+          two: function (v) {
+            markers.push("ab2", v);
+          }
+        });
+
+        exports.two = 2;
+      },
+
+      b: function (require, exports) {
+        exports.one = 1;
+
+        require("./a", {
+          one: function (v) {
+            markers.push("ba1", v);
+          },
+
+          two: function (v) {
+            markers.push("ba2", v);
+          }
+        });
+
+        exports.two = 2;
+      }
+    });
+
+    require("./a", {
+      one: function (v) {
+        markers.push("a1", v);
+      },
+
+      two: function (v) {
+        markers.push("a2", v);
+      }
+    });
+
+    assert.deepEqual(markers, [
+      "ba1", 1,
+      "ba2", void 0,
+      "ab1", 1,
+      "ab2", 2,
+      "a1", 1,
+      "ba2", 2,
+      "a2", 2,
+    ]);
+  });
 });
