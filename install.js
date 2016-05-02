@@ -55,6 +55,10 @@ makeInstaller = function (options) {
 
   install.Module = Module;
 
+  Module.prototype.get = function (key) {
+    return this.exports[key];
+  };
+
   function getOwn(obj, key) {
     return hasOwn.call(obj, key) && obj[key];
   }
@@ -170,11 +174,11 @@ makeInstaller = function (options) {
     }
 
     Object.keys(ms).forEach(function (key) {
+      var value = module.get(key);
       ms[key].forEach(function (setter) {
-        var value = module.exports[key];
         if (isFunction(setter) &&
-            ! hasOwn.call(setter, "last") ||
-            value !== setter.last) {
+            ! (hasOwn.call(setter, "last") &&
+               value === setter.last)) {
           setter(setter.last = value);
         }
       });
