@@ -256,6 +256,34 @@ describe("install", function () {
     require("./foo/bar/parent");
   });
 
+  it("supports options.fallback.resolve", function () {
+    var install = main.makeInstaller({
+      fallback: {
+        resolve: function (id, parentId, error) {
+          if (id === "assert") return id;
+          if (id === "path") return "paaath";
+          throw error;
+        }
+      }
+    });
+
+    var require = install({
+      a: function (require, exports) {
+        exports.assertId = require.resolve("assert");
+      },
+
+      b: function (r, exports, module) {
+        exports.pathId = module.resolve("path");
+      }
+    });
+
+    assert.strictEqual(require.resolve("assert"), "assert");
+    assert.strictEqual(require.resolve("path"), "paaath");
+
+    assert.strictEqual(require("./a").assertId, "assert");
+    assert.strictEqual(require("./b").pathId, "paaath");
+  });
+
   it("supports symbolic links", function () {
     var install = main.makeInstaller();
     var require = install({

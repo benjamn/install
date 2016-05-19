@@ -98,7 +98,11 @@ makeInstaller = function (options) {
     require.resolve = function (id) {
       var f = fileResolve(file, id);
       if (f) return f.m.id;
-      throw new Error("Cannot find module '" + id + "'");
+      var error = new Error("Cannot find module '" + id + "'");
+      if (fallback && isFunction(fallback.resolve)) {
+        return fallback.resolve(id, file.m.id, error);
+      }
+      throw error;
     };
 
     return require;
