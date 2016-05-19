@@ -53,11 +53,11 @@ makeInstaller = function (options) {
     this.children = [];
   }
 
-  install.Module = Module;
-
-  Module.prototype.get = function (key) {
-    return this.exports[key];
+  Module.prototype.resolve = function (id) {
+    return this.require.resolve(id);
   };
+
+  install.Module = Module;
 
   function getOwn(obj, key) {
     return hasOwn.call(obj, key) && obj[key];
@@ -76,10 +76,10 @@ makeInstaller = function (options) {
   }
 
   function makeRequire(file) {
-    function require(id, setters) {
+    function require(id) {
       var result = fileResolve(file, id);
       if (result) {
-        return fileEvaluate(result, file.m, setters);
+        return fileEvaluate(result, file.m);
       }
 
       var error = new Error("Cannot find module '" + id + "'");
@@ -129,7 +129,7 @@ makeInstaller = function (options) {
     file.m = new Module(name);
   }
 
-  function fileEvaluate(file, parentModule, setters) {
+  function fileEvaluate(file, parentModule) {
     var contents = file && file.c;
     var module = file.m;
 
@@ -147,7 +147,7 @@ makeInstaller = function (options) {
       if (! isFunction(module.useNode) ||
           ! module.useNode()) {
         contents(
-          file.r = file.r || makeRequire(file),
+          module.require = module.require || makeRequire(file),
           module.exports = {},
           module,
           file.m.id,
@@ -158,35 +158,11 @@ makeInstaller = function (options) {
       module.loaded = true;
     }
 
-    runModuleSetters(module, setters);
+    if (isFunction(module.runModuleSetters)) {
+      module.runModuleSetters();
+    }
 
     return module.exports;
-  }
-
-  function runModuleSetters(module, setters) {
-    var ms = module.setters = module.setters || {};
-
-    if (isObject(setters)) {
-      Object.keys(setters).forEach(function (key) {
-        ms[key] = ms[key] || [];
-        ms[key].push(setters[key]);
-      });
-    }
-
-    Object.keys(ms).forEach(function (key) {
-      var value = module.get(key);
-      ms[key].forEach(function (setter) {
-        if (isFunction(setter) &&
-            ! (hasOwn.call(setter, "last") &&
-               value === setter.last)) {
-          setter(setter.last = value);
-        }
-      });
-    });
-
-    if (module.loaded) {
-      delete module.setters;
-    }
   }
 
   function fileIsDirectory(file) {

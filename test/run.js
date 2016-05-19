@@ -1,5 +1,6 @@
 var assert = require("assert");
 var main = require("../install.js");
+var reify = require("reify/lib/runtime").enable;
 
 describe("install", function () {
   it("binds this to global", function () {
@@ -550,12 +551,17 @@ describe("install", function () {
 
   it("runs setters", function () {
     var install = main.makeInstaller();
+
+    // Enable Module.prototype.{import,export}.
+    reify(install.Module);
+
     var markers = [];
+
     var require = install({
-      a: function (require, exports) {
+      a: function (r, exports, module) {
         exports.one = 1;
 
-        require("./b", {
+        module.import("./b", {
           one: function (v) {
             markers.push("ab1", v);
           },
@@ -568,10 +574,10 @@ describe("install", function () {
         exports.two = 2;
       },
 
-      b: function (require, exports) {
+      b: function (r, exports, module) {
         exports.one = 1;
 
-        require("./a", {
+        module.import("./a", {
           one: function (v) {
             markers.push("ba1", v);
           },
@@ -585,14 +591,9 @@ describe("install", function () {
       }
     });
 
-    require("./a", {
-      one: function (v) {
-        markers.push("a1", v);
-      },
-
-      two: function (v) {
-        markers.push("a2", v);
-      }
+    assert.deepEqual(require("./a"), {
+      one: 1,
+      two: 2
     });
 
     assert.deepEqual(markers, [
@@ -600,9 +601,7 @@ describe("install", function () {
       "ba2", void 0,
       "ab1", 1,
       "ab2", 2,
-      "a1", 1,
-      "ba2", 2,
-      "a2", 2,
+      "ba2", 2
     ]);
   });
 });

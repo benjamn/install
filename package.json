@@ -31,7 +31,8 @@
   "devDependencies": {
     "docco": "^0.7.0",
     "mocha": "^2.3.3",
-    "uglifyjs": "^2.4.10"
+    "uglifyjs": "^2.4.10",
+    "reify": "^0.1.9"
   },
   "license": "MIT",
   "engines": {
