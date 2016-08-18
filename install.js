@@ -3,7 +3,7 @@ makeInstaller = function (options) {
 
   // These file extensions will be appended to required module identifiers
   // if they do not exactly match an installed module.
-  var defaultExtensions = options.extensions || [".js", ".json"];
+  var defaultExtensions = options.extensions || [".js", ".json", ".node"];
 
   // If defined, the options.onInstall function will be called any time
   // new modules are installed.
