@@ -633,4 +633,24 @@ describe("install", function () {
       "ba2", 2
     ]);
   });
+
+  it("supports options.wrapRequire", function () {
+    main.makeInstaller({
+      wrapRequire: function (require, parentId) {
+        assert.strictEqual(typeof require, "function");
+        assert.strictEqual(typeof parentId, "string");
+
+        function wrapper() {
+          return require.apply(this, arguments);
+        }
+
+        wrapper.parentId = parentId;
+        return wrapper;
+      }
+    })({
+      a: function (require, exports, module) {
+        assert.strictEqual(require.parentId, module.id);
+      }
+    })("./a");
+  });
 });
