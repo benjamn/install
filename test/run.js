@@ -620,6 +620,7 @@ describe("install", function () {
     });
 
     assert.deepEqual(require("./a"), {
+      __esModule: true,
       one: 1,
       two: 2
     });
