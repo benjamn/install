@@ -1,4 +1,6 @@
 makeInstaller = function (options) {
+  "use strict";
+
   options = options || {};
 
   // These file extensions will be appended to required module identifiers
