@@ -677,4 +677,55 @@ describe("install", function () {
       "/dir/client.js"
     );
   });
+
+  it("exposes require.extensions", function () {
+    var install = main.makeInstaller({
+      extensions: [".js", ".json", ".css"]
+    });
+
+    var require = install({
+      "a.js": function (require, exports, module) {
+        assert.deepEqual(
+          require.extensions,
+          [".js", ".json", ".css"]
+        );
+
+        assert.strictEqual(
+          require("./c").name,
+          "/c.css"
+        );
+
+        exports.name = module.id;
+      },
+
+      "c.css": function (require, exports, module) {
+        exports.name = module.id;
+      }
+    });
+
+    install({
+      "b.js": function (require, exports, module) {
+        assert.deepEqual(
+          require.extensions,
+          [".js", ".json", ".html"]
+        );
+
+        assert.strictEqual(
+          require("./c").name,
+          "/c.html"
+        );
+
+        exports.name = module.id;
+      },
+
+      "c.html": function (require, exports, module) {
+        exports.name = module.id;
+      }
+    }, {
+      extensions: [".js", ".json", ".html"]
+    });
+
+    assert.strictEqual(require("./a").name, "/a.js");
+    assert.strictEqual(require("./b").name, "/b.js");
+  });
 });

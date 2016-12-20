@@ -111,6 +111,8 @@ makeInstaller = function (options) {
       require = wrapRequire(require, file.m.id);
     }
 
+    require.extensions = fileGetExtensions(file).slice(0);
+
     require.resolve = function (id) {
       var f = fileResolve(file, id);
       if (f) return f.m.id;
