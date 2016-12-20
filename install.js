@@ -33,6 +33,12 @@ makeInstaller = function (options) {
   // characters than Object.prototype.hasOwnProperty after minification.
   var hasOwn = {}.hasOwnProperty;
 
+  // If truthy, package resolution will prefer the "browser" field of
+  // package.json files to the "main" field. Note that this only supports
+  // string-valued "browser" fields for now, though in the future it might
+  // make sense to support the object version, a la browserify.
+  var browser = options.browser;
+
   // The file object representing the root directory of the installed
   // module tree.
   var root = new File("/", new File("/.."));
@@ -321,8 +327,10 @@ makeInstaller = function (options) {
         seenDirFiles.push(file);
 
         var pkgJsonFile = fileAppendIdPart(file, "package.json");
-        var main = pkgJsonFile && fileEvaluate(pkgJsonFile).main;
-        if (isString(main)) {
+        var pkg = pkgJsonFile && fileEvaluate(pkgJsonFile), main;
+        if (pkg && (browser &&
+                    isString(main = pkg.browser) ||
+                    isString(main = pkg.main))) {
           // The "main" field of package.json does not have to begin with
           // ./ to be considered relative, so first we try simply
           // appending it to the directory path before falling back to a

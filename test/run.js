@@ -653,4 +653,28 @@ describe("install", function () {
       }
     })("./a");
   });
+
+  it("supports options.browser", function () {
+    var require = main.makeInstaller({
+      browser: true
+    })({
+      a: function (require, exports, module) {
+        exports.name = require("./dir").name;
+      },
+      dir: {
+        "package.json": function (require, exports, module) {
+          exports.main = "nonexistent";
+          exports.browser = "client.js";
+        },
+        "client.js": function (require, exports, module) {
+          exports.name = module.id;
+        }
+      }
+    });
+
+    assert.strictEqual(
+      require("./a").name,
+      "/dir/client.js"
+    );
+  });
 });
