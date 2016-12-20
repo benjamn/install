@@ -29,15 +29,14 @@ makeInstaller = function (options) {
   // require function, which has the ability to load binary modules.
   var fallback = options.fallback;
 
-  // Nothing special about MISSING.hasOwnProperty, except that it's fewer
-  // characters than Object.prototype.hasOwnProperty after minification.
-  var hasOwn = {}.hasOwnProperty;
-
   // If truthy, package resolution will prefer the "browser" field of
   // package.json files to the "main" field. Note that this only supports
   // string-valued "browser" fields for now, though in the future it might
   // make sense to support the object version, a la browserify.
   var browser = options.browser;
+
+  // Called below as hasOwn.call(obj, key).
+  var hasOwn = {}.hasOwnProperty;
 
   // The file object representing the root directory of the installed
   // module tree.
