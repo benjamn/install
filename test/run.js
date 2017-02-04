@@ -728,4 +728,38 @@ describe("install", function () {
     assert.strictEqual(require("./a").name, "/a.js");
     assert.strictEqual(require("./b").name, "/b.js");
   });
+
+  it("module.children collects package.json modules", function () {
+    var require = makeInstaller()({
+      "parent.js": function (require, exports, module) {
+        assert.deepEqual(module.children, []);
+
+        assert.strictEqual(
+          require("./child").name,
+          "/child/main.js"
+        );
+
+        exports.children = module.children;
+      },
+
+      child: {
+        "package.json": function (r, exports) {
+          exports.main = "main";
+        },
+
+        "main.js": function (r, exports, module) {
+          exports.name = module.id;
+        }
+      }
+    });
+
+    var ids = require("./parent").children.map(function (child) {
+      return child.id;
+    });
+
+    assert.deepEqual(ids, [
+      "/child/package.json",
+      "/child/main.js"
+    ]);
+  });
 });

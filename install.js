@@ -298,6 +298,7 @@ makeInstaller = function (options) {
   }
 
   function fileResolve(file, id, seenDirFiles) {
+    var parentModule = file.m;
     var extensions = fileGetExtensions(file);
 
     file =
@@ -327,8 +328,8 @@ makeInstaller = function (options) {
       if (seenDirFiles.indexOf(file) < 0) {
         seenDirFiles.push(file);
 
-        var pkgJsonFile = fileAppendIdPart(file, "package.json");
-        var pkg = pkgJsonFile && fileEvaluate(pkgJsonFile), main;
+        var pkgJsonFile = fileAppendIdPart(file, "package.json"), main;
+        var pkg = pkgJsonFile && fileEvaluate(pkgJsonFile, parentModule);
         if (pkg && (browser &&
                     isString(main = pkg.browser) ||
                     isString(main = pkg.main))) {
