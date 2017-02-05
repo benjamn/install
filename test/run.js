@@ -762,4 +762,38 @@ describe("install", function () {
       "/child/main.js"
     ]);
   });
+
+  it("module.childrenById collects all children", function () {
+    var require = makeInstaller()({
+      "parent.js": function (require, exports, module) {
+        assert.deepEqual(module.childrenById, {});
+
+        var childId = require("./child").name;
+        assert.strictEqual(childId, require.resolve("./child"));
+        assert.deepEqual(Object.keys(module.childrenById), [childId]);
+
+        require(module.id);
+        assert.deepEqual(
+          Object.keys(module.childrenById),
+          [childId, module.id]
+        );
+
+        assert.deepEqual(module.children, []);
+      },
+
+      "child.js": function (require, exports, module) {
+        assert.deepEqual(module.childrenById, {});
+        require(exports.name = module.id);
+        assert.strictEqual(module.childrenById[module.id], module);
+        assert.deepEqual(
+          Object.keys(module.childrenById),
+          [module.id]
+        );
+      }
+    });
+
+    assert.strictEqual(require("./child").name, "/child.js");
+
+    require("./parent");
+  });
 });

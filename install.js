@@ -62,7 +62,16 @@ makeInstaller = function (options) {
   // caller of makeInstaller wishes to modify Module.prototype.
   function Module(id) {
     this.id = id;
+
+    // The Node implementation of module.children unfortunately includes
+    // only those child modules that were imported for the first time by
+    // this parent module (i.e., child.parent === this).
     this.children = [];
+
+    // This object is an install.js extension that includes all child
+    // modules imported by this module, even if this module is not the
+    // first to import them.
+    this.childrenById = {};
   }
 
   Module.prototype.resolve = function (id) {
@@ -154,6 +163,10 @@ makeInstaller = function (options) {
   function fileEvaluate(file, parentModule) {
     var contents = file && file.c;
     var module = file.m;
+
+    if (parentModule) {
+      parentModule.childrenById[module.id] = module;
+    }
 
     if (! hasOwn.call(module, "exports")) {
       if (parentModule) {
