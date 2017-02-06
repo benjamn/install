@@ -796,4 +796,45 @@ describe("install", function () {
 
     require("./parent");
   });
+
+  it("module.childrenById accounts for aliases", function () {
+    var require = makeInstaller()({
+      "a.js": function (require, exports, module) {
+        assert.deepEqual(Object.keys(module.childrenById), []);
+        exports.childName = require("./alias1").name;
+        assert.deepEqual(Object.keys(module.childrenById), [
+          "/node_modules/one/package.json",
+          "/node_modules/two/package.json",
+          "/node_modules/two/main.js",
+        ]);
+      },
+
+      "alias1.js": "one",
+
+      node_modules: {
+        one: {
+          "package.json": function (r, exports) {
+            exports.main = "alias2";
+          },
+
+          "alias2.js": "two",
+        },
+
+        two: {
+          "package.json": function (r, exports) {
+            exports.main = "main";
+          },
+
+          "main.js": function (r, exports, module) {
+            exports.name = module.id;
+          }
+        }
+      }
+    });
+
+    assert.strictEqual(
+      require("./a").childName,
+      "/node_modules/two/main.js"
+    );
+  });
 });
