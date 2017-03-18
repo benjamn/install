@@ -1,4 +1,4 @@
-# install [![Build Status](https://travis-ci.org/benjamn/install.svg?branch=master)](https://travis-ci.org/benjamn/install)
+# install [![Build Status](https://travis-ci.org/benjamn/install.svg?branch=master)](https://travis-ci.org/benjamn/install) [![Greenkeeper badge](https://badges.greenkeeper.io/benjamn/install.svg)](https://greenkeeper.io/)
 
 The [CommonJS module syntax](http://wiki.commonjs.org/wiki/Modules/1.1) is one of the most widely accepted conventions in the JavaScript ecosystem. Everyone seems to agree that `require` and `exports` are a reasonable way of expressing module dependencies and interfaces, and the tools for managing modular code are getting better all the time.
 

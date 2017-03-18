@@ -30,9 +30,9 @@
   },
   "devDependencies": {
     "docco": "^0.7.0",
-    "mocha": "^2.3.3",
+    "mocha": "^3.2.0",
     "uglifyjs": "^2.4.10",
-    "reify": "^0.1.9"
+    "reify": "^0.5.3"
   },
   "license": "MIT",
   "engines": {
