@@ -580,7 +580,7 @@ describe("install", function () {
   it("runs setters", function () {
     var install = main.makeInstaller();
 
-    // Enable Module.prototype.{import,export}.
+    // Enable Module.prototype.{importSync,export}.
     reify(install.Module);
 
     var markers = [];
@@ -589,7 +589,9 @@ describe("install", function () {
       a: function (r, exports, module) {
         exports.one = 1;
 
-        module.import("./b", {
+        (module.importSync ||
+         module.import
+        ).call(module, "./b", {
           one: function (v) {
             markers.push("ab1", v);
           },
@@ -605,7 +607,9 @@ describe("install", function () {
       b: function (r, exports, module) {
         exports.one = 1;
 
-        module.import("./a", {
+        (module.importSync ||
+         module.import
+        ).call(module, "./a", {
           one: function (v) {
             markers.push("ba1", v);
           },
