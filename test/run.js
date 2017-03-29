@@ -632,6 +632,7 @@ describe("install", function () {
       "ba1", 1,
       "ba2", void 0,
       "ab1", 1,
+      "ab2", void 0,
       "ab2", 2,
       "ba2", 2
     ]);
