@@ -283,7 +283,7 @@ makeInstaller = function (options) {
     if (extensions && (! exactChild || fileIsDirectory(exactChild))) {
       for (var e = 0; e < extensions.length; ++e) {
         var child = getOwn(file.c, part + extensions[e]);
-        if (child) {
+        if (child && ! fileIsDirectory(child)) {
           return child;
         }
       }
