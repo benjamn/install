@@ -682,6 +682,78 @@ describe("install", function () {
     );
   });
 
+  it("supports pkg.module", function () {
+    function check(makeInstallerOptions) {
+      var require = main.makeInstaller(
+        makeInstallerOptions
+      )({
+        a: function (require, exports, module) {
+          exports.name = require("./dir").name;
+        },
+        dir: {
+          "package.json": function (require, exports, module) {
+            exports.main = "nonexistent";
+            exports.module = "client.mjs";
+            exports.browser = "client.js";
+          },
+          "client.mjs": function (require, exports, module) {
+            exports.name = module.id;
+          },
+          "client.js": function (require, exports, module) {
+            exports.name = module.id;
+          }
+        }
+      });
+
+      return require("./a");
+    }
+
+    assert.strictEqual(
+      check({
+        browser: true,
+        // This option takes precedence over options.browser, so the
+        // exports.browser field below will be ignored.
+        mainFields: ["module", "main"]
+      }).name,
+      "/dir/client.mjs"
+    );
+
+    assert.strictEqual(
+      check({
+        mainFields: ["module", "browser", "main"]
+      }).name,
+      "/dir/client.mjs"
+    );
+
+    assert.strictEqual(
+      check({
+        mainFields: ["browser", "module", "main"]
+      }).name,
+      "/dir/client.js"
+    );
+
+    assert.strictEqual(
+      check({
+        mainFields: ["module", "browser"]
+      }).name,
+      "/dir/client.mjs"
+    );
+
+    assert.strictEqual(
+      check({
+        mainFields: ["browser", "module"]
+      }).name,
+      "/dir/client.js"
+    );
+
+    assert.strictEqual(
+      check({
+        browser: true
+      }).name,
+      "/dir/client.js"
+    );
+  });
+
   it("exposes require.extensions", function () {
     var install = main.makeInstaller({
       extensions: [".js", ".json", ".css"]

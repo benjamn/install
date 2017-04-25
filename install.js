@@ -29,11 +29,16 @@ makeInstaller = function (options) {
   // require function, which has the ability to load binary modules.
   var fallback = options.fallback;
 
-  // If truthy, package resolution will prefer the "browser" field of
-  // package.json files to the "main" field. Note that this only supports
-  // string-valued "browser" fields for now, though in the future it might
-  // make sense to support the object version, a la browserify.
-  var browser = options.browser;
+  // List of fields to look for in package.json files to determine the
+  // main entry module of the package. The first field listed here whose
+  // value is a string will be used to resolve the entry module.
+  var mainFields = options.mainFields ||
+    // If options.mainFields is absent and options.browser is truthy,
+    // package resolution will prefer the "browser" field of package.json
+    // files to the "main" field. Note that this only supports
+    // string-valued "browser" fields for now, though in the future it
+    // might make sense to support the object version, a la browserify.
+    (options.browser ? ["browser", "main"] : ["main"]);
 
   // Called below as hasOwn.call(obj, key).
   var hasOwn = {}.hasOwnProperty;
@@ -346,9 +351,10 @@ makeInstaller = function (options) {
 
         var pkgJsonFile = fileAppendIdPart(file, "package.json"), main;
         var pkg = pkgJsonFile && fileEvaluate(pkgJsonFile, parentModule);
-        if (pkg && (browser &&
-                    isString(main = pkg.browser) ||
-                    isString(main = pkg.main))) {
+        if (pkg &&
+            mainFields.some(function (name) {
+              return isString(main = pkg[name]);
+            })) {
           recordChild(parentModule, pkgJsonFile);
 
           // The "main" field of package.json does not have to begin with
