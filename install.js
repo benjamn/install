@@ -170,6 +170,11 @@ makeInstaller = function (options) {
     // function, if the file represents a module that can be imported; or
     // (3) a string, if the file is an alias for another file.
     file.contents = null;
+
+    // Set of module identifiers imported by this module. Note that this
+    // set is not necessarily complete, so don't rely on it unless you
+    // know what you're doing.
+    file.deps = {};
   }
 
   function fileEvaluate(file, parentModule) {
@@ -213,31 +218,22 @@ makeInstaller = function (options) {
   }
 
   function fileMergeContents(file, contents, options) {
-    // If contents is an array of strings and functions, return the last
-    // function with a `.d` property containing all the strings.
     if (Array.isArray(contents)) {
-      var deps = [];
-
       contents.forEach(function (item) {
         if (isString(item)) {
-          deps.push(item);
+          file.deps[item] = file.module.id;
         } else if (isFunction(item)) {
           contents = item;
         }
       });
 
-      if (isFunction(contents)) {
-        contents.d = deps;
-      } else {
+      if (! isFunction(contents)) {
         // If the array did not contain a function, merge nothing.
         contents = null;
       }
 
-    } else if (isFunction(contents)) {
-      // If contents is already a function, make sure it has `.d`.
-      contents.d = contents.d || [];
-
-    } else if (! isString(contents) &&
+    } else if (! isFunction(contents) &&
+               ! isString(contents) &&
                ! isObject(contents)) {
       // If contents is neither an array nor a function nor a string nor
       // an object, just give up and merge nothing.
