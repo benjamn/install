@@ -962,4 +962,70 @@ describe("install", function () {
       }
     })("/a.js");
   });
+
+  function addToTree(tree, id, value) {
+    var parts = id.split("/");
+    var lastIndex = parts.length - 1;
+    parts.forEach(function (part, i) {
+      if (part) {
+        tree = tree[part] = tree[part] ||
+          (i < lastIndex ? Object.create(null) : value);
+      }
+    });
+  }
+
+  it("supports Module.prototype.prefetch and options.prefetch", function () {
+    var options = {};
+    var install = makeInstaller({
+      prefetch(ids) {
+        var tree = {};
+
+        Object.keys(ids).forEach(function (id) {
+          assert.strictEqual(ids[id], options);
+          addToTree(tree, id, function (r, exports, module) {
+            exports.name = module.id;
+          });
+        });
+
+        return tree;
+      }
+    });
+
+    return install({
+      "a.js": function (require, exports, module) {
+        module.exports = module.prefetch("./b").then(function (id) {
+          assert.strictEqual(id, "/b.js");
+          assert.strictEqual(require("./b").name, id);
+          assert.strictEqual(require("./c").name, "/c.js");
+
+          assert.strictEqual(
+            require("d").name,
+            "/node_modules/d/index.js"
+          );
+
+          assert.strictEqual(
+            require("d/package").name,
+            "/node_modules/d/package.json"
+          );
+
+          return module.prefetch("./nonexistent").catch(function (error) {
+            assert.ok(error instanceof Error);
+            assert.ok(error.message.startsWith("Cannot find module"));
+          });
+        });
+      },
+
+      "b.js": ["./c", "d"],
+      "c.js": ["d", "./b"],
+
+      node_modules: {
+        d: {
+          "package.json": [{
+            main: "index"
+          }],
+          "index.js": []
+        }
+      }
+    }, options)("/a.js");
+  });
 });

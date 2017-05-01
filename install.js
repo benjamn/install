@@ -43,6 +43,12 @@ makeInstaller = function (options) {
   // Called below as hasOwn.call(obj, key).
   var hasOwn = {}.hasOwnProperty;
 
+  // Cache for looking up File objects given absolute module identifiers.
+  // Invariants:
+  //   filesByModuleId[module.id] === fileAppendId(root, module.id)
+  //   filesByModuleId[module.id].module === module
+  var filesByModuleId = {};
+
   // The file object representing the root directory of the installed
   // module tree.
   var root = new File("/", new File("/.."));
@@ -81,6 +87,42 @@ makeInstaller = function (options) {
 
   Module.prototype.resolve = function (id) {
     return this.require.resolve(id);
+  };
+
+  Module.prototype.prefetch = function (id) {
+    var parentFile = getOwn(filesByModuleId, this.id);
+    var missing = {};
+
+    function walk(module) {
+      var file = getOwn(filesByModuleId, module.id);
+      if (fileIsDynamic(file) && ! file.pending) {
+        file.pending = true;
+        missing[file.module.id] = file.options;
+        each(file.deps, function (parentId, id) {
+          fileResolve(file, id, file.module);
+        });
+        each(file.module.childrenById, walk);
+      }
+    }
+
+    var childFile = fileResolve(parentFile, id, parentFile.module);
+    if (! childFile) {
+      return Promise.reject(makeMissingError(id));
+    }
+
+    each(parentFile.module.childrenById, walk);
+
+    // The options.prefetch method takes an object mapping missing dynamic
+    // module identifiers to options objects, and should return a Promise
+    // that resolves to a module tree that can be installed.
+    return Promise.resolve(options.prefetch(missing))
+      .then(install)
+      .then(function () {
+        // If everything was successful, the final result of the
+        // module.prefetch(id) promise will be the fully-resolved absolute
+        // form of the given identifier.
+        return childFile.module.id;
+      });
   };
 
   install.Module = Module;
@@ -159,7 +201,7 @@ makeInstaller = function (options) {
   // This is important for implementing anonymous files, and preventing
   // child modules from using `../relative/identifier` syntax to examine
   // unrelated modules.
-  function File(name, parent) {
+  function File(moduleId, parent) {
     var file = this;
 
     // Link to the parent file.
@@ -167,12 +209,14 @@ makeInstaller = function (options) {
 
     // The module object for this File, which will eventually boast an
     // .exports property when/if the file is evaluated.
-    file.module = new Module(name);
+    file.module = new Module(moduleId);
+    filesByModuleId[moduleId] = file;
 
     // The .contents of the file can be either (1) an object, if the file
     // represents a directory containing other files; (2) a factory
-    // function, if the file represents a module that can be imported; or
-    // (3) a string, if the file is an alias for another file.
+    // function, if the file represents a module that can be imported; (3)
+    // a string, if the file is an alias for another file; or (4) null, if
+    // the file's contents are not (yet) available.
     file.contents = null;
 
     // Set of module identifiers imported by this module. Note that this
@@ -232,6 +276,10 @@ makeInstaller = function (options) {
 
   function fileIsDirectory(file) {
     return file && isObject(file.contents);
+  }
+
+  function fileIsDynamic(file) {
+    return file && file.contents === null;
   }
 
   function fileMergeContents(file, contents, options) {
