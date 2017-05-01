@@ -913,4 +913,53 @@ describe("install", function () {
       "/node_modules/two/main.js"
     );
   });
+
+  it("supports module.exports stubs in array notation", function () {
+    var install = makeInstaller();
+
+    install({
+      "a.js": function (require, exports) {
+        assert.strictEqual(require("b").name, "/node_modules/b/index.js");
+
+        var bPkg = require("b/package");
+        assert.deepEqual(bPkg, { main: "index.js" });
+
+        // Now install the "real" package.json module.
+        install({
+          node_modules: {
+            b: {
+              "package.json": function (require, exports) {
+                // For consistency, if there was a stub, the same object
+                // should be used for module.exports when the actual
+                // module is first evaluated.
+                assert.strictEqual(exports, bPkg);
+                exports.version = "1.2.3";
+              }
+            }
+          }
+        });
+
+        assert.deepEqual(require("b/package"), {
+          main: "index.js",
+          version: "1.2.3"
+        });
+      },
+
+      node_modules: {
+        b: {
+          // If a module is defined with array notation, and the array
+          // contains one or more objects but no functions, then the
+          // combined properties of the objects are treated as a temporary
+          // stub for module.exports.
+          "package.json": [{
+            main: "index.js"
+          }],
+
+          "index.js": function (r, exports, module) {
+            exports.name = module.id;
+          }
+        }
+      }
+    })("/a.js");
+  });
 });

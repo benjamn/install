@@ -179,6 +179,18 @@ makeInstaller = function (options) {
 
   function fileEvaluate(file, parentModule) {
     var contents = file && file.contents;
+
+    if (! contents && file.stub) {
+      // If this file was installed with array notation, and the array
+      // contained one or more objects but no functions, then the combined
+      // properties of the objects are treated as a temporary stub for
+      // file.module.exports. This is particularly important for partial
+      // package.json modules, so that the resolution logic can know the
+      // value of the "main" and/or "browser" fields, at least, even if
+      // the rest of the package.json file is not (yet) available.
+      return file.stub;
+    }
+
     var module = file.module;
 
     if (! hasOwn.call(module, "exports")) {
@@ -196,7 +208,8 @@ makeInstaller = function (options) {
           ! module.useNode()) {
         contents(
           module.require = module.require || makeRequire(file),
-          module.exports = {},
+          // If the file had a .stub, reuse the same object for exports.
+          module.exports = file.stub || {},
           module,
           file.module.id,
           file.parent.module.id
@@ -224,6 +237,11 @@ makeInstaller = function (options) {
           file.deps[item] = file.module.id;
         } else if (isFunction(item)) {
           contents = item;
+        } else if (isObject(item)) {
+          file.stub = file.stub || {};
+          each(item, function (value, key) {
+            file.stub[key] = value;
+          });
         }
       });
 
