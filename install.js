@@ -148,7 +148,7 @@ makeInstaller = function (options) {
   // `(require, exports, module)` arguments to evaluate the module. If the
   // `.c` property is a string, that string will be resolved as a module
   // identifier, and the exports of the resulting module will provide the
-  // exports of the original file. The `.p` (parent) property of a File is
+  // exports of the original file. The `.parent` property of a File is
   // either a directory `File` or `null`. Note that a child may claim
   // another `File` as its parent even if the parent does not have an
   // entry for that child in its `.c` object.  This is important for
@@ -158,7 +158,7 @@ makeInstaller = function (options) {
     var file = this;
 
     // Link to the parent file.
-    file.p = parent = parent || null;
+    file.parent = parent = parent || null;
 
     // The module object for this File, which will eventually boast an
     // .exports property when/if the file is evaluated.
@@ -187,7 +187,7 @@ makeInstaller = function (options) {
           module.exports = {},
           module,
           file.module.id,
-          file.p.module.id
+          file.parent.module.id
         );
       }
 
@@ -242,7 +242,7 @@ makeInstaller = function (options) {
       if (isObject(contents) && fileIsDirectory(file)) {
         Object.keys(contents).forEach(function (key) {
           if (key === "..") {
-            child = file.p;
+            child = file.parent;
 
           } else {
             var child = getOwn(file.c, key);
@@ -269,7 +269,7 @@ makeInstaller = function (options) {
   function fileAppendIdPart(file, part, extensions) {
     // Always append relative to a directory.
     while (file && ! fileIsDirectory(file)) {
-      file = file.p;
+      file = file.parent;
     }
 
     if (! file || ! part || part === ".") {
@@ -277,7 +277,7 @@ makeInstaller = function (options) {
     }
 
     if (part === "..") {
-      return file.p;
+      return file.parent;
     }
 
     var exactChild = getOwn(file.c, part);
@@ -400,7 +400,7 @@ makeInstaller = function (options) {
     }
 
     if (isString(id)) {
-      for (var resolved; file && ! resolved; file = file.p) {
+      for (var resolved; file && ! resolved; file = file.parent) {
         resolved = fileIsDirectory(file) &&
           fileAppendId(file, "node_modules/" + id, extensions);
       }
