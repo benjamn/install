@@ -96,12 +96,13 @@ makeInstaller = function (options) {
 
   Module.prototype.prefetch = function (id) {
     var parentFile = getOwn(filesByModuleId, this.id);
-    var missing = {};
+    var missing; // Initialized to {} only if necessary.
 
     function walk(module) {
       var file = getOwn(filesByModuleId, module.id);
       if (fileIsDynamic(file) && ! file.pending) {
         file.pending = true;
+        missing = missing || {};
         missing[file.module.id] = file.options;
         each(file.deps, function (parentId, id) {
           fileResolve(file, id, file.module);
@@ -117,6 +118,14 @@ makeInstaller = function (options) {
 
     each(parentFile.module.childrenById, walk);
 
+    var absChildId = childFile.module.id;
+
+    if (! missing) {
+      // If there were no missing dynamic modules, we can skip calling
+      // install.fetch entirely.
+      return Promise.resolve(absChildId);
+    }
+
     // The install.fetch function takes an object mapping missing dynamic
     // module identifiers to options objects, and should return a Promise
     // that resolves to a module tree that can be installed.
@@ -126,7 +135,7 @@ makeInstaller = function (options) {
         // If everything was successful, the final result of the
         // module.prefetch(id) promise will be the fully-resolved absolute
         // form of the given identifier.
-        return childFile.module.id;
+        return absChildId;
       });
   };
 
