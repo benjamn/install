@@ -247,7 +247,7 @@ makeInstaller = function (options) {
     if (contents) {
       file.contents = file.contents || (isObject(contents) ? {} : contents);
       if (isObject(contents) && fileIsDirectory(file)) {
-        Object.keys(contents).forEach(function (key) {
+        each(contents, function (value, key) {
           if (key === "..") {
             child = file.parent;
 
@@ -263,10 +263,16 @@ makeInstaller = function (options) {
             }
           }
 
-          fileMergeContents(child, contents[key], options);
+          fileMergeContents(child, value, options);
         });
       }
     }
+  }
+
+  function each(obj, callback, context) {
+    Object.keys(obj).forEach(function (key) {
+      callback.call(this, obj[key], key);
+    }, context);
   }
 
   function fileGetExtensions(file) {
