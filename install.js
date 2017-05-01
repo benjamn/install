@@ -259,7 +259,7 @@ makeInstaller = function (options) {
                 file
               );
 
-              child.o = options;
+              child.options = options;
             }
           }
 
@@ -270,7 +270,9 @@ makeInstaller = function (options) {
   }
 
   function fileGetExtensions(file) {
-    return file.o && file.o.extensions || defaultExtensions;
+    return file.options
+      && file.options.extensions
+      || defaultExtensions;
   }
 
   function fileAppendIdPart(file, part, extensions) {
