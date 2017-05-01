@@ -105,7 +105,7 @@ makeInstaller = function (options) {
     function require(id) {
       var result = fileResolve(file, id);
       if (result) {
-        return fileEvaluate(result, file.m);
+        return fileEvaluate(result, file.module);
       }
 
       var error = new Error("Cannot find module '" + id + "'");
@@ -113,7 +113,7 @@ makeInstaller = function (options) {
       if (isFunction(fallback)) {
         return fallback(
           id, // The missing module identifier.
-          file.m.id, // The path of the requiring file.
+          file.module.id, // The path of the requiring file.
           error // The error we would have thrown.
         );
       }
@@ -122,17 +122,17 @@ makeInstaller = function (options) {
     }
 
     if (isFunction(wrapRequire)) {
-      require = wrapRequire(require, file.m.id);
+      require = wrapRequire(require, file.module.id);
     }
 
     require.extensions = fileGetExtensions(file).slice(0);
 
     require.resolve = function (id) {
       var f = fileResolve(file, id);
-      if (f) return f.m.id;
+      if (f) return f.module.id;
       var error = new Error("Cannot find module '" + id + "'");
       if (fallback && isFunction(fallback.resolve)) {
-        return fallback.resolve(id, file.m.id, error);
+        return fallback.resolve(id, file.module.id, error);
       }
       throw error;
     };
@@ -162,12 +162,12 @@ makeInstaller = function (options) {
 
     // The module object for this File, which will eventually boast an
     // .exports property when/if the file is evaluated.
-    file.m = new Module(name);
+    file.module = new Module(name);
   }
 
   function fileEvaluate(file, parentModule) {
     var contents = file && file.c;
-    var module = file.m;
+    var module = file.module;
 
     if (! hasOwn.call(module, "exports")) {
       if (parentModule) {
@@ -186,8 +186,8 @@ makeInstaller = function (options) {
           module.require = module.require || makeRequire(file),
           module.exports = {},
           module,
-          file.m.id,
-          file.p.m.id
+          file.module.id,
+          file.p.module.id
         );
       }
 
@@ -248,7 +248,7 @@ makeInstaller = function (options) {
             var child = getOwn(file.c, key);
             if (! child) {
               child = file.c[key] = new File(
-                file.m.id.replace(/\/*$/, "/") + key,
+                file.module.id.replace(/\/*$/, "/") + key,
                 file
               );
 
@@ -312,14 +312,14 @@ makeInstaller = function (options) {
   }
 
   function recordChild(parentModule, childFile) {
-    var childModule = childFile && childFile.m;
+    var childModule = childFile && childFile.module;
     if (parentModule && childModule) {
       parentModule.childrenById[childModule.id] = childModule;
     }
   }
 
   function fileResolve(file, id, parentModule, seenDirFiles) {
-    var parentModule = parentModule || file.m;
+    var parentModule = parentModule || file.module;
     var extensions = fileGetExtensions(file);
 
     file =
@@ -396,7 +396,7 @@ makeInstaller = function (options) {
 
   function nodeModulesLookup(file, id, extensions) {
     if (isFunction(override)) {
-      id = override(id, file.m.id);
+      id = override(id, file.module.id);
     }
 
     if (isString(id)) {
