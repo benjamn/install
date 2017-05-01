@@ -976,20 +976,20 @@ describe("install", function () {
 
   it("supports Module.prototype.prefetch and options.prefetch", function () {
     var options = {};
-    var install = makeInstaller({
-      prefetch(ids) {
-        var tree = {};
+    var install = makeInstaller();
 
-        Object.keys(ids).forEach(function (id) {
-          assert.strictEqual(ids[id], options);
-          addToTree(tree, id, function (r, exports, module) {
-            exports.name = module.id;
-          });
+    install.fetch = function (ids) {
+      var tree = {};
+
+      Object.keys(ids).forEach(function (id) {
+        assert.strictEqual(ids[id], options);
+        addToTree(tree, id, function (r, exports, module) {
+          exports.name = module.id;
         });
+      });
 
-        return tree;
-      }
-    });
+      return tree;
+    };
 
     return install({
       "a.js": function (require, exports, module) {

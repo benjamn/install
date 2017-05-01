@@ -67,6 +67,11 @@ makeInstaller = function (options) {
     return rootRequire;
   }
 
+  // Replace this function to enable Module.prototype.prefetch.
+  install.fetch = function (ids) {
+    throw new Error("fetch not implemented");
+  };
+
   // This constructor will be used to instantiate the module objects
   // passed to module factory functions (i.e. the third argument after
   // require and exports), and is exposed as install.Module in case the
@@ -112,10 +117,10 @@ makeInstaller = function (options) {
 
     each(parentFile.module.childrenById, walk);
 
-    // The options.prefetch method takes an object mapping missing dynamic
+    // The install.fetch function takes an object mapping missing dynamic
     // module identifiers to options objects, and should return a Promise
     // that resolves to a module tree that can be installed.
-    return Promise.resolve(options.prefetch(missing))
+    return Promise.resolve(install.fetch(missing))
       .then(install)
       .then(function () {
         // If everything was successful, the final result of the
