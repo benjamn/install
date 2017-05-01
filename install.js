@@ -141,19 +141,20 @@ makeInstaller = function (options) {
   }
 
   // File objects represent either directories or modules that have been
-  // installed. When a `File` respresents a directory, its `.c` (contents)
+  // installed. When a `File` respresents a directory, its `.contents`
   // property is an object containing the names of the files (or
   // directories) that it contains. When a `File` represents a module, its
-  // `.c` property is a function that can be invoked with the appropriate
-  // `(require, exports, module)` arguments to evaluate the module. If the
-  // `.c` property is a string, that string will be resolved as a module
-  // identifier, and the exports of the resulting module will provide the
-  // exports of the original file. The `.parent` property of a File is
-  // either a directory `File` or `null`. Note that a child may claim
-  // another `File` as its parent even if the parent does not have an
-  // entry for that child in its `.c` object.  This is important for
-  // implementing anonymous files, and preventing child modules from using
-  // `../relative/identifier` syntax to examine unrelated modules.
+  // `.contents` property is a function that can be invoked with the
+  // appropriate `(require, exports, module)` arguments to evaluate the
+  // module. If the `.contents` property is a string, that string will be
+  // resolved as a module identifier, and the exports of the resulting
+  // module will provide the exports of the original file. The `.parent`
+  // property of a File is either a directory `File` or `null`. Note that
+  // a child may claim another `File` as its parent even if the parent
+  // does not have an entry for that child in its `.contents` object.
+  // This is important for implementing anonymous files, and preventing
+  // child modules from using `../relative/identifier` syntax to examine
+  // unrelated modules.
   function File(name, parent) {
     var file = this;
 
@@ -163,10 +164,16 @@ makeInstaller = function (options) {
     // The module object for this File, which will eventually boast an
     // .exports property when/if the file is evaluated.
     file.module = new Module(name);
+
+    // The .contents of the file can be either (1) an object, if the file
+    // represents a directory containing other files; (2) a factory
+    // function, if the file represents a module that can be imported; or
+    // (3) a string, if the file is an alias for another file.
+    file.contents = null;
   }
 
   function fileEvaluate(file, parentModule) {
-    var contents = file && file.c;
+    var contents = file && file.contents;
     var module = file.module;
 
     if (! hasOwn.call(module, "exports")) {
@@ -202,7 +209,7 @@ makeInstaller = function (options) {
   }
 
   function fileIsDirectory(file) {
-    return file && isObject(file.c);
+    return file && isObject(file.contents);
   }
 
   function fileMergeContents(file, contents, options) {
@@ -238,16 +245,16 @@ makeInstaller = function (options) {
     }
 
     if (contents) {
-      file.c = file.c || (isObject(contents) ? {} : contents);
+      file.contents = file.contents || (isObject(contents) ? {} : contents);
       if (isObject(contents) && fileIsDirectory(file)) {
         Object.keys(contents).forEach(function (key) {
           if (key === "..") {
             child = file.parent;
 
           } else {
-            var child = getOwn(file.c, key);
+            var child = getOwn(file.contents, key);
             if (! child) {
-              child = file.c[key] = new File(
+              child = file.contents[key] = new File(
                 file.module.id.replace(/\/*$/, "/") + key,
                 file
               );
@@ -280,14 +287,14 @@ makeInstaller = function (options) {
       return file.parent;
     }
 
-    var exactChild = getOwn(file.c, part);
+    var exactChild = getOwn(file.contents, part);
 
     // Only consider multiple file extensions if this part is the last
     // part of a module identifier and not equal to `.` or `..`, and there
     // was no exact match or the exact match was a directory.
     if (extensions && (! exactChild || fileIsDirectory(exactChild))) {
       for (var e = 0; e < extensions.length; ++e) {
-        var child = getOwn(file.c, part + extensions[e]);
+        var child = getOwn(file.contents, part + extensions[e]);
         if (child && ! fileIsDirectory(child)) {
           return child;
         }
@@ -385,8 +392,8 @@ makeInstaller = function (options) {
       file = fileAppendIdPart(file, "index.js");
     }
 
-    if (file && isString(file.c)) {
-      file = fileResolve(file, file.c, parentModule, seenDirFiles);
+    if (file && isString(file.contents)) {
+      file = fileResolve(file, file.contents, parentModule, seenDirFiles);
     }
 
     recordChild(parentModule, file);
