@@ -101,6 +101,10 @@ makeInstaller = function (options) {
     return typeof value === "string";
   }
 
+  function makeMissingError(id) {
+    return new Error("Cannot find module '" + id + "'");
+  }
+
   function makeRequire(file) {
     function require(id) {
       var result = fileResolve(file, id);
@@ -108,7 +112,7 @@ makeInstaller = function (options) {
         return fileEvaluate(result, file.module);
       }
 
-      var error = new Error("Cannot find module '" + id + "'");
+      var error = makeMissingError(id);
 
       if (isFunction(fallback)) {
         return fallback(
@@ -130,7 +134,7 @@ makeInstaller = function (options) {
     require.resolve = function (id) {
       var f = fileResolve(file, id);
       if (f) return f.module.id;
-      var error = new Error("Cannot find module '" + id + "'");
+      var error = makeMissingError(id);
       if (fallback && isFunction(fallback.resolve)) {
         return fallback.resolve(id, file.module.id, error);
       }
