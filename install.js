@@ -231,9 +231,10 @@ makeInstaller = function (options) {
   }
 
   function fileEvaluate(file, parentModule) {
-    var contents = file && file.contents;
+    var contents = file.contents;
+    var module = file.module;
 
-    if (! contents && file.stub) {
+    if (! contents) {
       // If this file was installed with array notation, and the array
       // contained one or more objects but no functions, then the combined
       // properties of the objects are treated as a temporary stub for
@@ -241,10 +242,12 @@ makeInstaller = function (options) {
       // package.json modules, so that the resolution logic can know the
       // value of the "main" and/or "browser" fields, at least, even if
       // the rest of the package.json file is not (yet) available.
-      return file.stub;
-    }
+      if (file.stub) {
+        return file.stub;
+      }
 
-    var module = file.module;
+      throw makeMissingError(module.id);
+    }
 
     if (! hasOwn.call(module, "exports")) {
       if (parentModule) {
