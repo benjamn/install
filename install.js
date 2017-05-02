@@ -111,10 +111,43 @@ makeInstaller = function (options) {
       if (fileIsDynamic(file) && ! file.pending) {
         file.pending = true;
         missing = missing || {};
-        missing[module.id] = file.options;
+
+        // These are the data that will be exposed to the install.fetch
+        // callback, so it's worth documenting each item with a comment.
+        missing[module.id] = {
+          // The CommonJS module object that will be exposed to this
+          // dynamic module when it is evaluated. Note that install.fetch
+          // could decide to populate module.exports directly, instead of
+          // fetching anything. In that case, install.fetch should omit
+          // this module from the tree that it produces.
+          module: file.module,
+          // List of module identifier strings imported by this module.
+          // Note that the missing object already contains all available
+          // dependencies (including transitive dependencies), so
+          // install.fetch should not need to traverse these dependencies
+          // in most cases; however, they may be useful for other reasons.
+          // Though the strings are unique, note that two different
+          // strings could resolve to the same module.
+          deps: Object.keys(file.deps),
+          // The options (if any) that were passed as the second argument
+          // to the install(tree, options) function when this stub was
+          // first registered. Typically contains options.extensions, but
+          // could contain any information appropriate for the entire tree
+          // as originally installed. These options will be automatically
+          // inherited by the newly fetched modules, so install.fetch
+          // should not need to modify them.
+          options: file.options,
+          // Any stub data included in the array notation from the
+          // original entry for this dynamic module. Typically contains
+          // "main" and/or "browser" fields for package.json files, and is
+          // otherwise undefined.
+          stub: file.stub
+        };
+
         each(file.deps, function (parentId, id) {
           fileResolve(file, id);
         });
+
         each(module.childrenById, walk);
       }
     }

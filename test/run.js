@@ -982,8 +982,11 @@ describe("install", function () {
       var tree = {};
 
       Object.keys(ids).forEach(function (id) {
-        assert.strictEqual(ids[id], options);
+        var info = ids[id];
+        assert.strictEqual(info.options, options);
+        assert.strictEqual(info.module.id, id);
         addToTree(tree, id, function (r, exports, module) {
+          assert.strictEqual(module, info.module);
           exports.name = module.id;
         });
       });
