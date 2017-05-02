@@ -1085,4 +1085,35 @@ describe("install", function () {
 
     return require("./main");
   });
+
+  it("respects module.exports before file.contents", function () {
+    var install = makeInstaller();
+
+    install.fetch = function (ids) {
+      var keys = Object.keys(ids);
+      assert.deepEqual(keys, ["/b.js"]);
+      var info = ids[keys[0]];
+      assert.deepEqual(info.stub, { stub: true });
+      info.module.exports = { stub: false };
+      // Returning nothing because we've manually populated module.exports
+      // for the b.js module.
+    };
+
+    var require = install({
+      "a.js": function (require, exports, module) {
+        var stub = require("./b");
+        assert.deepEqual(stub, { stub: true });
+        exports.promise = module.prefetch("./b").then(function () {
+          var notStub = require("./b");
+          assert.deepEqual(notStub, { stub: false });
+          assert.notStrictEqual(stub, notStub);
+        });
+      },
+      "b.js": [{
+        stub: true
+      }]
+    });
+
+    return require("./a").promise;
+  });
 });

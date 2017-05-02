@@ -283,25 +283,24 @@ makeInstaller = function (options) {
   }
 
   function fileEvaluate(file, parentModule) {
-    var contents = file.contents;
     var module = file.module;
+    if (! hasOwn.call(module, "exports")) {
+      var contents = file.contents;
+      if (! contents) {
+        // If this file was installed with array notation, and the array
+        // contained one or more objects but no functions, then the combined
+        // properties of the objects are treated as a temporary stub for
+        // file.module.exports. This is particularly important for partial
+        // package.json modules, so that the resolution logic can know the
+        // value of the "main" and/or "browser" fields, at least, even if
+        // the rest of the package.json file is not (yet) available.
+        if (file.stub) {
+          return file.stub;
+        }
 
-    if (! contents) {
-      // If this file was installed with array notation, and the array
-      // contained one or more objects but no functions, then the combined
-      // properties of the objects are treated as a temporary stub for
-      // file.module.exports. This is particularly important for partial
-      // package.json modules, so that the resolution logic can know the
-      // value of the "main" and/or "browser" fields, at least, even if
-      // the rest of the package.json file is not (yet) available.
-      if (file.stub) {
-        return file.stub;
+        throw makeMissingError(module.id);
       }
 
-      throw makeMissingError(module.id);
-    }
-
-    if (! hasOwn.call(module, "exports")) {
       if (parentModule) {
         module.parent = parentModule;
         var children = parentModule.children;
@@ -379,6 +378,7 @@ makeInstaller = function (options) {
 
           } else {
             var child = getOwn(file.contents, key);
+
             if (! child) {
               child = file.contents[key] = new File(
                 file.module.id.replace(/\/*$/, "/") + key,
