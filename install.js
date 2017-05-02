@@ -94,14 +94,17 @@ makeInstaller = function (options) {
     return this.require.resolve(id);
   };
 
-  var resolvedPromise = Promise.resolve();
-  var lastPrefetchPromise = resolvedPromise;
+  var resolvedPromise;
+  var lastPrefetchPromise;
 
   Module.prototype.prefetch = function (id) {
-    var previousPromise = lastPrefetchPromise;
     var module = this;
     var parentFile = getOwn(filesByModuleId, module.id);
     var missing; // Initialized to {} only if necessary.
+
+    resolvedPromise = resolvedPromise || Promise.resolve();
+    lastPrefetchPromise = lastPrefetchPromise || resolvedPromise;
+    var previousPromise = lastPrefetchPromise;
 
     function walk(module) {
       var file = getOwn(filesByModuleId, module.id);
