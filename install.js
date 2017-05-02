@@ -94,8 +94,13 @@ makeInstaller = function (options) {
     return this.require.resolve(id);
   };
 
+  var resolvedPromise = Promise.resolve();
+  var lastPrefetchPromise = resolvedPromise;
+
   Module.prototype.prefetch = function (id) {
-    var parentFile = getOwn(filesByModuleId, this.id);
+    var previousPromise = lastPrefetchPromise;
+    var module = this;
+    var parentFile = getOwn(filesByModuleId, module.id);
     var missing; // Initialized to {} only if necessary.
 
     function walk(module) {
@@ -103,40 +108,42 @@ makeInstaller = function (options) {
       if (fileIsDynamic(file) && ! file.pending) {
         file.pending = true;
         missing = missing || {};
-        missing[file.module.id] = file.options;
+        missing[module.id] = file.options;
         each(file.deps, function (parentId, id) {
-          fileResolve(file, id, file.module);
+          fileResolve(file, id);
         });
-        each(file.module.childrenById, walk);
+        each(module.childrenById, walk);
       }
     }
 
-    var childFile = fileResolve(parentFile, id, parentFile.module);
-    if (! childFile) {
-      return Promise.reject(makeMissingError(id));
-    }
+    return lastPrefetchPromise = resolvedPromise.then(function () {
+      var absChildId = module.resolve(id);
+      each(module.childrenById, walk);
 
-    each(parentFile.module.childrenById, walk);
+      return Promise.resolve(
+        // The install.fetch function takes an object mapping missing
+        // dynamic module identifiers to options objects, and should
+        // return a Promise that resolves to a module tree that can be
+        // installed. As an optimization, if there were no missing dynamic
+        // modules, then we can skip calling install.fetch entirely.
+        missing && install.fetch(missing)
 
-    var absChildId = childFile.module.id;
+      ).then(function (tree) {
+        function both() {
+          if (tree) install(tree);
+          return absChildId;
+        }
 
-    if (! missing) {
-      // If there were no missing dynamic modules, we can skip calling
-      // install.fetch entirely.
-      return Promise.resolve(absChildId);
-    }
-
-    // The install.fetch function takes an object mapping missing dynamic
-    // module identifiers to options objects, and should return a Promise
-    // that resolves to a module tree that can be installed.
-    return Promise.resolve(install.fetch(missing))
-      .then(install)
-      .then(function () {
-        // If everything was successful, the final result of the
-        // module.prefetch(id) promise will be the fully-resolved absolute
-        // form of the given identifier.
-        return absChildId;
+        // Although we want multiple install.fetch calls to run in
+        // parallel, it is important that the promises returned by
+        // module.prefetch are resolved in the same order as the original
+        // calls to module.prefetch, because previous fetches may include
+        // modules assumed to exist by more recent module.prefetch calls.
+        // Whether previousPromise was resolved or rejected, carry on with
+        // the installation regardless.
+        return previousPromise.then(both, both);
       });
+    });
   };
 
   install.Module = Module;

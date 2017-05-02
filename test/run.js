@@ -1028,4 +1028,58 @@ describe("install", function () {
       }
     }, options)("/a.js");
   });
+
+  it("enforces ordering of module.prefetch promise resolution", function () {
+    var install = makeInstaller();
+    var bResolve;
+    var bPromise = new Promise(function (resolve) {
+      bResolve = resolve;
+    });
+
+    function exportName(r, exports, module) {
+      exports.name = module.id;
+    }
+
+    // This install.fetch function always resolves b.js before a.js, even
+    // though module.prefetch is called in the other order.
+    install.fetch = function (ids) {
+      var keys = Object.keys(ids);
+      assert.strictEqual(keys.length, 1);
+
+      if (keys[0] === "/a.js") {
+        return bPromise.then(function () {
+          return { "a.js": exportName };
+        });
+      }
+
+      if (keys[0] === "/b.js") {
+        bResolve({ "b.js": exportName });
+        return bPromise;
+      }
+
+      throw new Error("unreached");
+    };
+
+    var require = install({
+      "main.js": function (require, exports, module) {
+        var order = [];
+        function record(id) {
+          order.push(id);
+        }
+
+        module.exports = Promise.all([
+          module.prefetch("./a").then(record),
+          module.prefetch("./b").then(record),
+        ]).then(function () {
+          assert.deepEqual(order, ["/a.js", "/b.js"]);
+          assert.strictEqual(require("./a").name, order[0]);
+          assert.strictEqual(require("./b").name, order[1]);
+        });
+      },
+      "a.js": [],
+      "b.js": []
+    });
+
+    return require("./main");
+  });
 });
