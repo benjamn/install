@@ -12,7 +12,7 @@ makeInstaller = function (options) {
   var onInstall = options.onInstall;
 
   // If defined, each module-specific require function will be passed to
-  // this function, along with the module.id of the parent module, and
+  // this function, along with the module object of the parent module, and
   // the result will be used in place of the original require function.
   var wrapRequire = options.wrapRequire;
 
@@ -225,7 +225,7 @@ makeInstaller = function (options) {
     }
 
     if (isFunction(wrapRequire)) {
-      require = wrapRequire(require, file.module.id);
+      require = wrapRequire(require, file.module);
     }
 
     require.extensions = fileGetExtensions(file).slice(0);

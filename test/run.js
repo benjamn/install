@@ -639,15 +639,16 @@ describe("install", function () {
 
   it("supports options.wrapRequire", function () {
     main.makeInstaller({
-      wrapRequire: function (require, parentId) {
+      wrapRequire: function (require, parent) {
         assert.strictEqual(typeof require, "function");
-        assert.strictEqual(typeof parentId, "string");
+        assert.strictEqual(typeof parent, "object");
+        assert.strictEqual(typeof parent.id, "string");
 
         function wrapper() {
           return require.apply(this, arguments);
         }
 
-        wrapper.parentId = parentId;
+        wrapper.parentId = parent.id;
         return wrapper;
       }
     })({
