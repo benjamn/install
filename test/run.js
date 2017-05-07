@@ -579,15 +579,13 @@ describe("install", function () {
 
   it("runs setters", function () {
     var install = main.makeInstaller();
-
-    // Enable Module.prototype.{importSync,export}.
-    reify(install.Module);
-
     var markers = [];
-
     var require = install({
       a: function (r, exports, module) {
         exports.one = 1;
+
+        // Enable module.{importSync,export}.
+        reify(module);
 
         (module.importSync ||
          module.import
@@ -606,6 +604,9 @@ describe("install", function () {
 
       b: function (r, exports, module) {
         exports.one = 1;
+
+        // Enable module.{importSync,export}.
+        reify(module);
 
         (module.importSync ||
          module.import
