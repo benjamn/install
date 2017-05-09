@@ -326,8 +326,11 @@ makeInstaller = function (options) {
       module.loaded = true;
     }
 
-    if (isFunction(module.runModuleSetters)) {
-      module.runModuleSetters();
+    // The module.runModuleSetters method will be deprecated in favor of
+    // just module.runSetters: https://github.com/benjamn/reify/pull/160
+    var runSetters = module.runSetters || module.runModuleSetters;
+    if (isFunction(runSetters)) {
+      runSetters.call(module);
     }
 
     return module.exports;
