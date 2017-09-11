@@ -166,7 +166,7 @@ makeInstaller = function (options) {
 
       ).then(function (tree) {
         function both() {
-          if (tree) install(tree);
+          install(tree);
           return absChildId;
         }
 
