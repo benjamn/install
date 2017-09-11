@@ -189,7 +189,7 @@ makeInstaller = function (options) {
   }
 
   function isObject(value) {
-    return typeof value === "object" && value !== null;
+    return value !== null && typeof value === "object";
   }
 
   function isFunction(value) {
