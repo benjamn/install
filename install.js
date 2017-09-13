@@ -40,8 +40,10 @@ makeInstaller = function (options) {
     // might make sense to support the object version, a la browserify.
     (options.browser ? ["browser", "main"] : ["main"]);
 
-  // Called below as hasOwn.call(obj, key).
   var hasOwn = {}.hasOwnProperty;
+  function strictHasOwn(obj, key) {
+    return isObject(obj) && isString(key) && hasOwn.call(obj, key);
+  }
 
   // Cache for looking up File objects given absolute module identifiers.
   // Invariants:
@@ -185,7 +187,7 @@ makeInstaller = function (options) {
   install.Module = Module;
 
   function getOwn(obj, key) {
-    return hasOwn.call(obj, key) && obj[key];
+    return strictHasOwn(obj, key) && obj[key];
   }
 
   function isObject(value) {
@@ -284,7 +286,7 @@ makeInstaller = function (options) {
 
   function fileEvaluate(file, parentModule) {
     var module = file.module;
-    if (! hasOwn.call(module, "exports")) {
+    if (! strictHasOwn(module, "exports")) {
       var contents = file.contents;
       if (! contents) {
         // If this file was installed with array notation, and the array
