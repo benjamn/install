@@ -96,16 +96,18 @@ makeInstaller = function (options) {
     return this.require.resolve(id);
   };
 
-  var resolvedPromise;
+  // Used to keep module.prefetch promise resolutions well-ordered.
   var lastPrefetchPromise;
+
+  // May be shared by multiple sequential calls to module.prefetch.
+  // Initialized to {} only when necessary.
+  var missing;
 
   Module.prototype.prefetch = function (id) {
     var module = this;
     var parentFile = getOwn(filesByModuleId, module.id);
-    var missing; // Initialized to {} only if necessary.
 
-    resolvedPromise = resolvedPromise || Promise.resolve();
-    lastPrefetchPromise = lastPrefetchPromise || resolvedPromise;
+    lastPrefetchPromise = lastPrefetchPromise || Promise.resolve();
     var previousPromise = lastPrefetchPromise;
 
     function walk(module) {
@@ -154,9 +156,15 @@ makeInstaller = function (options) {
       }
     }
 
-    return lastPrefetchPromise = resolvedPromise.then(function () {
+    return lastPrefetchPromise = new Promise(function (resolve) {
       var absChildId = module.resolve(id);
       each(module.childrenById, walk);
+      resolve(absChildId);
+
+    }).then(function (absChildId) {
+      // Grab the current missing object and fetch its contents.
+      var toBeFetched = missing;
+      missing = null;
 
       return Promise.resolve(
         // The install.fetch function takes an object mapping missing
@@ -164,7 +172,7 @@ makeInstaller = function (options) {
         // return a Promise that resolves to a module tree that can be
         // installed. As an optimization, if there were no missing dynamic
         // modules, then we can skip calling install.fetch entirely.
-        missing && install.fetch(missing)
+        toBeFetched && install.fetch(toBeFetched)
 
       ).then(function (tree) {
         function both() {

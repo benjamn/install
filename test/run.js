@@ -1035,10 +1035,6 @@ describe("install", function () {
 
   it("enforces ordering of module.prefetch promise resolution", function () {
     var install = makeInstaller();
-    var bResolve;
-    var bPromise = new Promise(function (resolve) {
-      bResolve = resolve;
-    });
 
     function exportName(r, exports, module) {
       exports.name = module.id;
@@ -1048,20 +1044,12 @@ describe("install", function () {
     // though module.prefetch is called in the other order.
     install.fetch = function (ids) {
       var keys = Object.keys(ids);
-      assert.strictEqual(keys.length, 1);
-
-      if (keys[0] === "/a.js") {
-        return bPromise.then(function () {
-          return { "a.js": exportName };
-        });
-      }
-
-      if (keys[0] === "/b.js") {
-        bResolve({ "b.js": exportName });
-        return bPromise;
-      }
-
-      throw new Error("unreached");
+      assert.strictEqual(keys.length, 2);
+      var tree = {};
+      keys.forEach(function (key) {
+        tree[key.split("/").pop()] = exportName;
+      });
+      return tree;
     };
 
     var require = install({
@@ -1085,6 +1073,39 @@ describe("install", function () {
     });
 
     return require("./main");
+  });
+
+  it("batches module.prefetch calls into one install.fetch call", function () {
+    var install = makeInstaller();
+    var fetchCallCount = 0;
+
+    install.fetch = function (ids) {
+      ++fetchCallCount;
+      assert.deepEqual(Object.keys(ids).sort(), [
+        "/a.js",
+        "/b.js",
+      ]);
+      return {};
+    };
+
+    var require = install({
+      "main.js": function (require, exports, module) {
+        exports.promise = Promise.all([
+          module.prefetch("./a"),
+          module.prefetch("./b")
+        ]);
+      },
+      "a.js": [],
+      "b.js": []
+    });
+
+    return require("./main").promise.then(function (ab) {
+      assert.strictEqual(fetchCallCount, 1);
+      assert.deepEqual(ab.sort(), [
+        "/a.js",
+        "/b.js",
+      ]);
+    });
   });
 
   it("respects module.exports before file.contents", function () {
