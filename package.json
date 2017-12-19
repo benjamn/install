@@ -29,7 +29,7 @@
     "test": "mocha --reporter spec --full-trace test/run.js"
   },
   "devDependencies": {
-    "docco": "^0.7.0",
+    "docco": "^0.8.0",
     "mocha": "^4.0.1",
     "uglify-js": "^3.0.12",
     "reify": "^0.12.3"
