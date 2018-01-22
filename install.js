@@ -509,17 +509,17 @@ makeInstaller = function (options) {
             mainFields.some(function (name) {
               return isString(main = pkg[name]);
             })) {
-          recordChild(parentModule, pkgJsonFile);
-
           // The "main" field of package.json does not have to begin with
           // ./ to be considered relative, so first we try simply
           // appending it to the directory path before falling back to a
           // full fileResolve, which might return a package from a
           // node_modules directory.
-          file = fileAppendId(file, main, extensions) ||
+          var mainFile = fileAppendId(file, main, extensions) ||
             fileResolve(file, main, parentModule, seenDirFiles);
 
-          if (file) {
+          if (mainFile) {
+            file = mainFile;
+            recordChild(parentModule, pkgJsonFile);
             // The fileAppendId call above may have returned a directory,
             // so continue the loop to make sure we resolve it to a
             // non-directory file.

@@ -1138,4 +1138,39 @@ describe("install", function () {
 
     return require("./a").promise;
   });
+
+  it('falls back to index.js when package.json "main" missing', function () {
+    var install = makeInstaller();
+    var require = install({
+      "main.js"(require, exports, module) {
+        exports.result = require("pkg");
+      },
+
+      node_modules: {
+        pkg: {
+          "package.json"(require, exports, module) {
+            // Since this file is missing, the root index.js should be used.
+            exports.main = "dist/index.js";
+          },
+
+          "index.js"(require, exports, module) {
+            exports.isRoot = true;
+            exports.id = module.id;
+            exports.oyez = require("./dist/oyez.js");
+          },
+
+          dist: {
+            "oyez.js"(require, exports, module) {
+              exports.id = module.id;
+            }
+          }
+        }
+      }
+    });
+
+    var result = require("./main").result;
+    assert.strictEqual(result.isRoot, true);
+    assert.strictEqual(result.id, "/node_modules/pkg/index.js");
+    assert.strictEqual(result.oyez.id, "/node_modules/pkg/dist/oyez.js");
+  });
 });
