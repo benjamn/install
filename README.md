@@ -54,7 +54,7 @@ objects and functions to the `install` function:
 
 ```js
 var require = install({
-  "main.js": function (require, exports, module) {
+  "main.js"(require, exports, module) {
     // On the client, the "assert" module should be install-ed just like
     // any other module. On the server, since "assert" is a built-in Node
     // module, it may make sense to let the options.fallback function
@@ -76,13 +76,13 @@ var require = install({
       // If package.json is not defined, a module called "index.js" will
       // be used as the main entry point for the package. Otherwise the
       // exports.main property will identify the entry point.
-      "package.json": function (require, exports, module) {
+      "package.json"(require, exports, module) {
         exports.name = "package";
         exports.version = "0.1.0";
         exports.main = "entry.js";
       },
 
-      "entry.js": function (require, exports, module) {
+      "entry.js"(require, exports, module) {
         exports.name = module.id;
       }
     }
