@@ -549,34 +549,6 @@ describe("install", function () {
     require("./a");
   });
 
-  it("respects Module.prototype.useNode", function () {
-    var install = main.makeInstaller();
-
-    install.Module.prototype.useNode = function () {
-      if (this.id.split("/").pop() === "b") {
-        assert.strictEqual(typeof this.exports, "undefined");
-        this.exports = {
-          usedNode: true
-        };
-        return true;
-      }
-    };
-
-    var require = install({
-      a: function (require, exports) {
-        exports.b = require("./b");
-      },
-
-      b: function (r, exports) {
-        exports.usedNode = false;
-      }
-    });
-
-    assert.strictEqual(require("./a").b.usedNode, true);
-    assert.strictEqual(require("./b").usedNode, true);
-    assert.strictEqual(require("./a").b, require("./b"));
-  });
-
   it("runs setters", function () {
     var install = main.makeInstaller();
     var markers = [];
