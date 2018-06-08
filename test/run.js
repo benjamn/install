@@ -556,12 +556,10 @@ describe("install", function () {
       a: function (r, exports, module) {
         exports.one = 1;
 
-        // Enable module.{importSync,export}.
+        // Enable module.watch.
         reify(module);
 
-        (module.importSync ||
-         module.import
-        ).call(module, "./b", {
+        module.watch(require("./b"), {
           one: function (v) {
             markers.push("ab1", v);
           },
@@ -577,12 +575,10 @@ describe("install", function () {
       b: function (r, exports, module) {
         exports.one = 1;
 
-        // Enable module.{importSync,export}.
+        // Enable module.watch.
         reify(module);
 
-        (module.importSync ||
-         module.import
-        ).call(module, "./a", {
+        module.watch(require("./a"), {
           one: function (v) {
             markers.push("ba1", v);
           },
