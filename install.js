@@ -92,10 +92,6 @@ makeInstaller = function (options) {
     this.childrenById = {};
   }
 
-  Module.prototype.resolve = function (id) {
-    return this.require.resolve(id);
-  };
-
   // Used to keep module.prefetch promise resolutions well-ordered.
   var lastPrefetchPromise;
 
@@ -214,24 +210,40 @@ makeInstaller = function (options) {
     return new Error("Cannot find module '" + id + "'");
   }
 
+  Module.prototype.resolve = function (id) {
+    var file = fileResolve(filesByModuleId[this.id], id);
+    if (file) return file.module.id;
+    var error = makeMissingError(id);
+    if (fallback && isFunction(fallback.resolve)) {
+      return fallback.resolve(id, this.id, error);
+    }
+    throw error;
+  };
+
+  Module.prototype.require = function require(id) {
+    var result = fileResolve(filesByModuleId[this.id], id);
+    if (result) {
+      return fileEvaluate(result, this);
+    }
+
+    var error = makeMissingError(id);
+
+    if (isFunction(fallback)) {
+      return fallback(
+        id, // The missing module identifier.
+        this.id, // ID of the parent module.
+        error // The error we would have thrown.
+      );
+    }
+
+    throw error;
+  };
+
   function makeRequire(file) {
+    var module = file.module;
+
     function require(id) {
-      var result = fileResolve(file, id);
-      if (result) {
-        return fileEvaluate(result, file.module);
-      }
-
-      var error = makeMissingError(id);
-
-      if (isFunction(fallback)) {
-        return fallback(
-          id, // The missing module identifier.
-          file.module.id, // The path of the requiring file.
-          error // The error we would have thrown.
-        );
-      }
-
-      throw error;
+      return module.require(id);
     }
 
     if (isFunction(wrapRequire)) {
@@ -240,14 +252,8 @@ makeInstaller = function (options) {
 
     require.extensions = fileGetExtensions(file).slice(0);
 
-    require.resolve = function (id) {
-      var f = fileResolve(file, id);
-      if (f) return f.module.id;
-      var error = makeMissingError(id);
-      if (fallback && isFunction(fallback.resolve)) {
-        return fallback.resolve(id, file.module.id, error);
-      }
-      throw error;
+    require.resolve = function resolve(id) {
+      return module.resolve(id);
     };
 
     return require;
@@ -320,7 +326,7 @@ makeInstaller = function (options) {
       }
 
       contents(
-        module.require = module.require || makeRequire(file),
+        makeRequire(file),
         // If the file had a .stub, reuse the same object for exports.
         module.exports = file.stub || {},
         module,
