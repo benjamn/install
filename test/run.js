@@ -606,27 +606,6 @@ describe("install", function () {
     ]);
   });
 
-  it("supports options.wrapRequire", function () {
-    main.makeInstaller({
-      wrapRequire: function (require, parent) {
-        assert.strictEqual(typeof require, "function");
-        assert.strictEqual(typeof parent, "object");
-        assert.strictEqual(typeof parent.id, "string");
-
-        function wrapper() {
-          return require.apply(this, arguments);
-        }
-
-        wrapper.parentId = parent.id;
-        return wrapper;
-      }
-    })({
-      a: function (require, exports, module) {
-        assert.strictEqual(require.parentId, module.id);
-      }
-    })("./a");
-  });
-
   it("supports options.browser", function () {
     var require = main.makeInstaller({
       browser: true

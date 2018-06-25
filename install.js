@@ -11,11 +11,6 @@ makeInstaller = function (options) {
   // new modules are installed.
   var onInstall = options.onInstall;
 
-  // If defined, each module-specific require function will be passed to
-  // this function, along with the module object of the parent module, and
-  // the result will be used in place of the original require function.
-  var wrapRequire = options.wrapRequire;
-
   // If defined, the options.override function will be called before
   // looking up any top-level package identifiers in node_modules
   // directories. It can either return a string to provide an alternate
@@ -244,10 +239,6 @@ makeInstaller = function (options) {
 
     function require(id) {
       return module.require(id);
-    }
-
-    if (isFunction(wrapRequire)) {
-      require = wrapRequire(require, file.module);
     }
 
     require.extensions = fileGetExtensions(file).slice(0);
