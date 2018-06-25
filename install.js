@@ -528,10 +528,10 @@ makeInstaller = function (options) {
       // consider is that this directory contains an `index.js` module.
       // This assignment almost always terminates the while loop, because
       // there's very little chance `fileIsDirectory(file)` will be true
-      // for the result of `fileAppendIdPart(file, "index.js")`. However,
-      // in principle it is remotely possible that a file called
-      // `index.js` could be a directory instead of a file.
-      file = fileAppendIdPart(file, "index.js");
+      // for `fileAppendIdPart(file, "index", extensions)`. However, in
+      // principle it is remotely possible that a file called `index.js`
+      // could be a directory instead of a file.
+      file = fileAppendIdPart(file, "index", extensions);
     }
 
     if (file && isString(file.contents)) {

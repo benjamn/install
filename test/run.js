@@ -1141,4 +1141,45 @@ describe("install", function () {
     assert.strictEqual(result.id, "/node_modules/pkg/index.js");
     assert.strictEqual(result.oyez.id, "/node_modules/pkg/dist/oyez.js");
   });
+
+  it("tolerates index.* modules with alternate extensions", function () {
+    var extensions = [".js", ".json"];
+    var require = makeInstaller({
+      extensions,
+    })({
+      "main.js"(require, exports, module) {
+        exports.json = require("./jsonDir");
+      },
+
+      jsonDir: {
+        "index.json"(require, exports, module) {
+          exports.name = module.id;
+        }
+      },
+
+      tsxDir: {
+        "index.tsx"(require, exports, module) {
+          exports.name = module.id;
+        }
+      }
+    });
+
+    var main = require("./main");
+    assert.strictEqual(main.json.name, "/jsonDir/index.json");
+
+    var threw = false;
+    try {
+      require("/tsxDir");
+    } catch (e) {
+      threw = true;
+      assert.strictEqual(e.message, "Cannot find module '/tsxDir'");
+    }
+    assert.strictEqual(threw, true);
+
+    extensions.push(".tsx");
+    assert.strictEqual(
+      require("/tsxDir").name,
+      "/tsxDir/index.tsx"
+    );
+  });
 });
