@@ -7,10 +7,6 @@ makeInstaller = function (options) {
   // if they do not exactly match an installed module.
   var defaultExtensions = options.extensions || [".js", ".json"];
 
-  // If defined, the options.onInstall function will be called any time
-  // new modules are installed.
-  var onInstall = options.onInstall;
-
   // If defined, the options.override function will be called before
   // looking up any top-level package identifiers in node_modules
   // directories. It can either return a string to provide an alternate
@@ -57,9 +53,6 @@ makeInstaller = function (options) {
   function install(tree, options) {
     if (isObject(tree)) {
       fileMergeContents(root, tree, options);
-      if (isFunction(onInstall)) {
-        onInstall(rootRequire);
-      }
     }
     return rootRequire;
   }
