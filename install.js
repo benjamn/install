@@ -7,22 +7,6 @@ makeInstaller = function (options) {
   // if they do not exactly match an installed module.
   var defaultExtensions = options.extensions || [".js", ".json"];
 
-  // If defined, the options.onInstall function will be called any time
-  // new modules are installed.
-  var onInstall = options.onInstall;
-
-  // If defined, each module-specific require function will be passed to
-  // this function, along with the module object of the parent module, and
-  // the result will be used in place of the original require function.
-  var wrapRequire = options.wrapRequire;
-
-  // If defined, the options.override function will be called before
-  // looking up any top-level package identifiers in node_modules
-  // directories. It can either return a string to provide an alternate
-  // package identifier, or a non-string value to prevent the lookup from
-  // proceeding.
-  var override = options.override;
-
   // If defined, the options.fallback function will be called when no
   // installed module is found for a required module identifier. Often
   // options.fallback will be implemented in terms of the native Node
@@ -62,9 +46,6 @@ makeInstaller = function (options) {
   function install(tree, options) {
     if (isObject(tree)) {
       fileMergeContents(root, tree, options);
-      if (isFunction(onInstall)) {
-        onInstall(rootRequire);
-      }
     }
     return rootRequire;
   }
@@ -244,10 +225,6 @@ makeInstaller = function (options) {
 
     function require(id) {
       return module.require(id);
-    }
-
-    if (isFunction(wrapRequire)) {
-      require = wrapRequire(require, file.module);
     }
 
     require.extensions = fileGetExtensions(file).slice(0);
@@ -550,18 +527,11 @@ makeInstaller = function (options) {
   };
 
   function nodeModulesLookup(file, id, extensions) {
-    if (isFunction(override)) {
-      id = override(id, file.module.id);
+    for (var resolved; file && ! resolved; file = file.parent) {
+      resolved = fileIsDirectory(file) &&
+        fileAppendId(file, "node_modules/" + id, extensions);
     }
-
-    if (isString(id)) {
-      for (var resolved; file && ! resolved; file = file.parent) {
-        resolved = fileIsDirectory(file) &&
-          fileAppendId(file, "node_modules/" + id, extensions);
-      }
-
-      return resolved;
-    }
+    return resolved;
   }
 
   return install;
