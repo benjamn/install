@@ -103,5 +103,21 @@ function. If you're using the `install` package in a CommonJS environment
 like Node, be careful that you don't overwrite the `require` function
 provided by that system.
 
+If you need to change the behavior of the `module` object that each module
+function receives as its third parameter, the shared `Module` constructor
+is exposed as a property of the `install` function returned by the
+`makeInstaller` factory:
+
+```js
+var install = makeInstaller(options);
+var proto = install.Module.prototype;
+
+// Wrap all Module.prototype.require calls with some sort of logging.
+proto.require = wrapWithLogging(proto.require);
+
+// Add a new method available to all modules via module.newMethod(...).
+proto.newMethod = function () {...};
+```
+
 Many more examples of how to use the `install` package can be found in the
 [tests](https://github.com/benjamn/install/blob/master/test/run.js).
