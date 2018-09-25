@@ -142,8 +142,6 @@ makeInstaller = function (options) {
       // Grab the current missing object and fetch its contents.
       var toBeFetched = missing;
       missing = null;
-      // Grab current file object, so we can reset pending later.
-      var file = getOwn(filesByModuleId, absChildId);
 
       return Promise.resolve(
         // The install.fetch function takes an object mapping missing
