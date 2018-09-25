@@ -480,10 +480,10 @@ describe("install", function () {
       a: function (r, exports, module) {
         exports.one = 1;
 
-        // Enable module.link.
+        // Enable module.watch.
         reify(module);
 
-        module.link("./b", {
+        module.watch(require("./b"), {
           one: function (v) {
             markers.push("ab1", v);
           },
@@ -499,10 +499,10 @@ describe("install", function () {
       b: function (r, exports, module) {
         exports.one = 1;
 
-        // Enable module.link.
+        // Enable module.watch.
         reify(module);
 
-        module.link("./a", {
+        module.watch(require("./a"), {
           one: function (v) {
             markers.push("ba1", v);
           },
@@ -522,8 +522,6 @@ describe("install", function () {
     });
 
     assert.deepEqual(markers, [
-      "ab1", void 0,
-      "ab2", void 0,
       "ba1", 1,
       "ba2", void 0,
       "ab1", 1,
