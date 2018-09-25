@@ -142,6 +142,8 @@ makeInstaller = function (options) {
       // Grab the current missing object and fetch its contents.
       var toBeFetched = missing;
       missing = null;
+      // Grab file so we can reset pending later
+      var file = getOwn(filesByModuleId, absChildId);
 
       return Promise.resolve(
         // The install.fetch function takes an object mapping missing
@@ -154,6 +156,8 @@ makeInstaller = function (options) {
       ).then(function (tree) {
         function both() {
           install(tree);
+          // File has been fetched && installed
+          file.pending = false;
           return absChildId;
         }
 
@@ -165,6 +169,12 @@ makeInstaller = function (options) {
         // Whether previousPromise was resolved or rejected, carry on with
         // the installation regardless.
         return previousPromise.then(both, both);
+      }).catch(function (error) {
+        // File hasn't been fetch, but we need to reset pending, so
+        // condition for checking missing file in prefetch walk
+        // behave appropriately : https://github.com/meteor/meteor/issues/10182
+        file.pending = false;
+        throw new Error(error);
       });
     });
   };
