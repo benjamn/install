@@ -409,7 +409,15 @@ otherwise undefined.</p>
             <div class="content"><div class='highlight'><pre>      <span class="hljs-keyword">var</span> toBeFetched = missing;
       missing = <span class="hljs-literal">null</span>;
 
-      <span class="hljs-keyword">return</span> <span class="hljs-built_in">Promise</span>.resolve(</pre></div></div>
+      <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">clearPending</span>(<span class="hljs-params"></span>) </span>{
+        <span class="hljs-keyword">if</span> (toBeFetched) {
+          <span class="hljs-built_in">Object</span>.keys(toBeFetched).forEach(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">id</span>) </span>{
+            getOwn(filesByModuleId, id).pending = <span class="hljs-literal">false</span>;
+          });
+        }
+      }
+
+      <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">resolve</span>) </span>{</pre></div></div>
             
         </li>
         
@@ -428,11 +436,12 @@ modules, then we can skip calling install.fetch entirely.</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>        toBeFetched &amp;&amp; install.fetch(toBeFetched)
+            <div class="content"><div class='highlight'><pre>        resolve(toBeFetched &amp;&amp; install.fetch(toBeFetched));
 
-      ).then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">tree</span>) </span>{
+      }).then(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">tree</span>) </span>{
         <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">both</span>(<span class="hljs-params"></span>) </span>{
           install(tree);
+          clearPending();
           <span class="hljs-keyword">return</span> absChildId;
         }</pre></div></div>
             
@@ -456,6 +465,24 @@ the installation regardless.</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">return</span> previousPromise.then(both, both);
+
+      }, <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">error</span>) </span>{</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>Fixes <a href="https://github.com/meteor/meteor/issues/10182">https://github.com/meteor/meteor/issues/10182</a>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        clearPending();
+        <span class="hljs-keyword">throw</span> error;
       });
     });
   };
@@ -530,11 +557,11 @@ the installation regardless.</p>
         </li>
         
         
-        <li id="section-23">
+        <li id="section-24">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-23">&#182;</a>
+                <a class="pilcrow" href="#section-24">&#182;</a>
               </div>
               <p>File objects represent either directories or modules that have been
 installed. When a <code>File</code> respresents a directory, its <code>.contents</code>
@@ -560,11 +587,11 @@ unrelated modules.</p>
         </li>
         
         
-        <li id="section-24">
+        <li id="section-25">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-24">&#182;</a>
+                <a class="pilcrow" href="#section-25">&#182;</a>
               </div>
               <p>Link to the parent file.</p>
 
@@ -575,11 +602,11 @@ unrelated modules.</p>
         </li>
         
         
-        <li id="section-25">
+        <li id="section-26">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-25">&#182;</a>
+                <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
               <p>The module object for this File, which will eventually boast an
 .exports property when/if the file is evaluated.</p>
@@ -592,11 +619,11 @@ unrelated modules.</p>
         </li>
         
         
-        <li id="section-26">
+        <li id="section-27">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-26">&#182;</a>
+                <a class="pilcrow" href="#section-27">&#182;</a>
               </div>
               <p>The .contents of the file can be either (1) an object, if the file
 represents a directory containing other files; (2) a factory
@@ -611,11 +638,11 @@ the file’s contents are not (yet) available.</p>
         </li>
         
         
-        <li id="section-27">
+        <li id="section-28">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-27">&#182;</a>
+                <a class="pilcrow" href="#section-28">&#182;</a>
               </div>
               <p>Set of module identifiers imported by this module. Note that this
 set is not necessarily complete, so don’t rely on it unless you
@@ -635,11 +662,11 @@ know what you’re doing.</p>
         </li>
         
         
-        <li id="section-28">
+        <li id="section-29">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-28">&#182;</a>
+                <a class="pilcrow" href="#section-29">&#182;</a>
               </div>
               <p>If this file was installed with array notation, and the array
 contained one or more objects but no functions, then the combined
@@ -672,11 +699,11 @@ the rest of the package.json file is not (yet) available.</p>
         </li>
         
         
-        <li id="section-29">
+        <li id="section-30">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-29">&#182;</a>
+                <a class="pilcrow" href="#section-30">&#182;</a>
               </div>
               <p>If the file had a .stub, reuse the same object for exports.</p>
 
@@ -694,11 +721,11 @@ the rest of the package.json file is not (yet) available.</p>
         </li>
         
         
-        <li id="section-30">
+        <li id="section-31">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-30">&#182;</a>
+                <a class="pilcrow" href="#section-31">&#182;</a>
               </div>
               <p>The module.runModuleSetters method will be deprecated in favor of
 just module.runSetters: <a href="https://github.com/benjamn/reify/pull/160">https://github.com/benjamn/reify/pull/160</a></p>
@@ -741,11 +768,11 @@ just module.runSetters: <a href="https://github.com/benjamn/reify/pull/160">http
         </li>
         
         
-        <li id="section-31">
+        <li id="section-32">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-31">&#182;</a>
+                <a class="pilcrow" href="#section-32">&#182;</a>
               </div>
               <p>If the array did not contain a function, merge nothing.</p>
 
@@ -761,11 +788,11 @@ just module.runSetters: <a href="https://github.com/benjamn/reify/pull/160">http
         </li>
         
         
-        <li id="section-32">
+        <li id="section-33">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-32">&#182;</a>
+                <a class="pilcrow" href="#section-33">&#182;</a>
               </div>
               <p>If contents is neither an array nor a function nor a string nor
 an object, just give up and merge nothing.</p>
@@ -818,11 +845,11 @@ an object, just give up and merge nothing.</p>
         </li>
         
         
-        <li id="section-33">
+        <li id="section-34">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-33">&#182;</a>
+                <a class="pilcrow" href="#section-34">&#182;</a>
               </div>
               <p>Always append relative to a directory.</p>
 
@@ -845,11 +872,11 @@ an object, just give up and merge nothing.</p>
         </li>
         
         
-        <li id="section-34">
+        <li id="section-35">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-34">&#182;</a>
+                <a class="pilcrow" href="#section-35">&#182;</a>
               </div>
               <p>Only consider multiple file extensions if this part is the last
 part of a module identifier and not equal to <code>.</code> or <code>..</code>, and there
@@ -875,11 +902,11 @@ was no exact match or the exact match was a directory.</p>
         </li>
         
         
-        <li id="section-35">
+        <li id="section-36">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-35">&#182;</a>
+                <a class="pilcrow" href="#section-36">&#182;</a>
               </div>
               <p>Use <code>Array.prototype.every</code> to terminate iteration early if
 <code>fileAppendIdPart</code> returns a falsy value.</p>
@@ -911,11 +938,11 @@ was no exact match or the exact match was a directory.</p>
         </li>
         
         
-        <li id="section-36">
+        <li id="section-37">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-36">&#182;</a>
+                <a class="pilcrow" href="#section-37">&#182;</a>
               </div>
               <p>Absolute module identifiers (i.e. those that begin with a <code>/</code>
 character) are interpreted relative to the root directory, which
@@ -929,11 +956,11 @@ file system.</p>
         </li>
         
         
-        <li id="section-37">
+        <li id="section-38">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-37">&#182;</a>
+                <a class="pilcrow" href="#section-38">&#182;</a>
               </div>
               <p>Relative module identifiers are interpreted relative to the
 current file, naturally.</p>
@@ -945,11 +972,11 @@ current file, naturally.</p>
         </li>
         
         
-        <li id="section-38">
+        <li id="section-39">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-38">&#182;</a>
+                <a class="pilcrow" href="#section-39">&#182;</a>
               </div>
               <p>Top-level module identifiers are interpreted as referring to
 packages in <code>node_modules</code> directories.</p>
@@ -961,11 +988,11 @@ packages in <code>node_modules</code> directories.</p>
         </li>
         
         
-        <li id="section-39">
+        <li id="section-40">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-39">&#182;</a>
+                <a class="pilcrow" href="#section-40">&#182;</a>
               </div>
               <p>If the identifier resolves to a directory, we use the same logic as
 Node to find an <code>index.js</code> or <code>package.json</code> file to evaluate.</p>
@@ -978,11 +1005,11 @@ Node to find an <code>index.js</code> or <code>package.json</code> file to evalu
         </li>
         
         
-        <li id="section-40">
+        <li id="section-41">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-40">&#182;</a>
+                <a class="pilcrow" href="#section-41">&#182;</a>
               </div>
               <p>If the “main” field of a <code>package.json</code> file resolves to a
 directory we’ve already considered, then we should not attempt to
@@ -1006,11 +1033,11 @@ store File objects instead of strings.</p>
         </li>
         
         
-        <li id="section-41">
+        <li id="section-42">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-41">&#182;</a>
+                <a class="pilcrow" href="#section-42">&#182;</a>
               </div>
               <p>The “main” field of package.json does not have to begin with
 ./ to be considered relative, so first we try simply
@@ -1030,11 +1057,11 @@ node_modules directory.</p>
         </li>
         
         
-        <li id="section-42">
+        <li id="section-43">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-42">&#182;</a>
+                <a class="pilcrow" href="#section-43">&#182;</a>
               </div>
               <p>The fileAppendId call above may have returned a directory,
 so continue the loop to make sure we resolve it to a
@@ -1050,11 +1077,11 @@ non-directory file.</p>
         </li>
         
         
-        <li id="section-43">
+        <li id="section-44">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-43">&#182;</a>
+                <a class="pilcrow" href="#section-44">&#182;</a>
               </div>
               <p>If we didn’t find a <code>package.json</code> file, or it didn’t have a
 resolvable <code>.main</code> property, the only possibility left to
