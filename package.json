@@ -4,6 +4,7 @@
     "email": "bn@cs.stanford.edu"
   },
   "name": "install",
+  "version": "0.12.2",
   "description": "Minimal JavaScript module loader",
   "keywords": [
     "modules",
@@ -15,7 +16,6 @@
     "packager",
     "install"
   ],
-  "version": "0.12.1",
   "license": "MIT",
   "homepage": "http://github.com/benjamn/install",
   "repository": {
