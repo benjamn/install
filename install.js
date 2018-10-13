@@ -151,15 +151,15 @@ makeInstaller = function (options) {
         }
       }
 
-      return Promise.resolve(
+      return new Promise(function (resolve) {
         // The install.fetch function takes an object mapping missing
         // dynamic module identifiers to options objects, and should
         // return a Promise that resolves to a module tree that can be
         // installed. As an optimization, if there were no missing dynamic
         // modules, then we can skip calling install.fetch entirely.
-        toBeFetched && install.fetch(toBeFetched)
+        resolve(toBeFetched && install.fetch(toBeFetched));
 
-      ).then(function (tree) {
+      }).then(function (tree) {
         function both() {
           install(tree);
           clearPending();
