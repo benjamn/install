@@ -143,17 +143,26 @@ makeInstaller = function (options) {
       var toBeFetched = missing;
       missing = null;
 
-      return Promise.resolve(
+      function clearPending() {
+        if (toBeFetched) {
+          Object.keys(toBeFetched).forEach(function (id) {
+            getOwn(filesByModuleId, id).pending = false;
+          });
+        }
+      }
+
+      return new Promise(function (resolve) {
         // The install.fetch function takes an object mapping missing
         // dynamic module identifiers to options objects, and should
         // return a Promise that resolves to a module tree that can be
         // installed. As an optimization, if there were no missing dynamic
         // modules, then we can skip calling install.fetch entirely.
-        toBeFetched && install.fetch(toBeFetched)
+        resolve(toBeFetched && install.fetch(toBeFetched));
 
-      ).then(function (tree) {
+      }).then(function (tree) {
         function both() {
           install(tree);
+          clearPending();
           return absChildId;
         }
 
@@ -165,6 +174,11 @@ makeInstaller = function (options) {
         // Whether previousPromise was resolved or rejected, carry on with
         // the installation regardless.
         return previousPromise.then(both, both);
+
+      }, function (error) {
+        // Fixes https://github.com/meteor/meteor/issues/10182.
+        clearPending();
+        throw error;
       });
     });
   };
