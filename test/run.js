@@ -981,6 +981,60 @@ describe("install", function () {
     });
   });
 
+  it("supports retrying dynamic imports after failure", function () {
+    var install = makeInstaller();
+
+    var threw = false;
+    install.fetch = function (ids) {
+      if (! threw) {
+        threw = true;
+        debugger;
+        throw new Error("network failure, or something");
+      }
+
+      var tree = {};
+
+      Object.keys(ids).forEach(function (id) {
+        var info = ids[id];
+        assert.strictEqual(info.module.id, id);
+        addToTree(tree, id, function (r, exports, module) {
+          assert.strictEqual(module, info.module);
+          exports.name = module.id;
+        });
+      });
+
+      return tree;
+    };
+
+    var require = install({
+      "main.js": function (require, exports, module) {
+        exports.attempt = function (id) {
+          return module.prefetch(id);
+        };
+      },
+      "a.js": ["./c", "./b"],
+      "b.js": ["./a", "./c"],
+      "c.js": ["./a", "./b"]
+    });
+
+    var attempt = require("./main").attempt;
+
+    return attempt("./a").then(function () {
+      throw new Error("should have failed");
+    }, function (error) {
+      assert.strictEqual(threw, true);
+      assert.strictEqual(
+        error.message,
+        "network failure, or something"
+      );
+
+      return attempt("./c").then(function (id) {
+        assert.strictEqual(id, "/c.js");
+        assert.strictEqual(require("./c").name, id);
+      });
+    });
+  });
+
   it("respects module.exports before file.contents", function () {
     var install = makeInstaller();
 
