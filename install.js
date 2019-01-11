@@ -7,22 +7,6 @@ makeInstaller = function (options) {
   // if they do not exactly match an installed module.
   var defaultExtensions = options.extensions || [".js", ".json"];
 
-  // If defined, the options.onInstall function will be called any time
-  // new modules are installed.
-  var onInstall = options.onInstall;
-
-  // If defined, each module-specific require function will be passed to
-  // this function, along with the module object of the parent module, and
-  // the result will be used in place of the original require function.
-  var wrapRequire = options.wrapRequire;
-
-  // If defined, the options.override function will be called before
-  // looking up any top-level package identifiers in node_modules
-  // directories. It can either return a string to provide an alternate
-  // package identifier, or a non-string value to prevent the lookup from
-  // proceeding.
-  var override = options.override;
-
   // If defined, the options.fallback function will be called when no
   // installed module is found for a required module identifier. Often
   // options.fallback will be implemented in terms of the native Node
@@ -40,8 +24,10 @@ makeInstaller = function (options) {
     // might make sense to support the object version, a la browserify.
     (options.browser ? ["browser", "main"] : ["main"]);
 
-  // Called below as hasOwn.call(obj, key).
   var hasOwn = {}.hasOwnProperty;
+  function strictHasOwn(obj, key) {
+    return isObject(obj) && isString(key) && hasOwn.call(obj, key);
+  }
 
   // Cache for looking up File objects given absolute module identifiers.
   // Invariants:
@@ -60,9 +46,6 @@ makeInstaller = function (options) {
   function install(tree, options) {
     if (isObject(tree)) {
       fileMergeContents(root, tree, options);
-      if (isFunction(onInstall)) {
-        onInstall(rootRequire);
-      }
     }
     return rootRequire;
   }
@@ -90,20 +73,18 @@ makeInstaller = function (options) {
     this.childrenById = {};
   }
 
-  Module.prototype.resolve = function (id) {
-    return this.require.resolve(id);
-  };
-
-  var resolvedPromise;
+  // Used to keep module.prefetch promise resolutions well-ordered.
   var lastPrefetchPromise;
+
+  // May be shared by multiple sequential calls to module.prefetch.
+  // Initialized to {} only when necessary.
+  var missing;
 
   Module.prototype.prefetch = function (id) {
     var module = this;
     var parentFile = getOwn(filesByModuleId, module.id);
-    var missing; // Initialized to {} only if necessary.
 
-    resolvedPromise = resolvedPromise || Promise.resolve();
-    lastPrefetchPromise = lastPrefetchPromise || resolvedPromise;
+    lastPrefetchPromise = lastPrefetchPromise || Promise.resolve();
     var previousPromise = lastPrefetchPromise;
 
     function walk(module) {
@@ -152,21 +133,36 @@ makeInstaller = function (options) {
       }
     }
 
-    return lastPrefetchPromise = resolvedPromise.then(function () {
+    return lastPrefetchPromise = new Promise(function (resolve) {
       var absChildId = module.resolve(id);
       each(module.childrenById, walk);
+      resolve(absChildId);
 
-      return Promise.resolve(
+    }).then(function (absChildId) {
+      // Grab the current missing object and fetch its contents.
+      var toBeFetched = missing;
+      missing = null;
+
+      function clearPending() {
+        if (toBeFetched) {
+          Object.keys(toBeFetched).forEach(function (id) {
+            getOwn(filesByModuleId, id).pending = false;
+          });
+        }
+      }
+
+      return new Promise(function (resolve) {
         // The install.fetch function takes an object mapping missing
         // dynamic module identifiers to options objects, and should
         // return a Promise that resolves to a module tree that can be
         // installed. As an optimization, if there were no missing dynamic
         // modules, then we can skip calling install.fetch entirely.
-        missing && install.fetch(missing)
+        resolve(toBeFetched && install.fetch(toBeFetched));
 
-      ).then(function (tree) {
+      }).then(function (tree) {
         function both() {
-          if (tree) install(tree);
+          install(tree);
+          clearPending();
           return absChildId;
         }
 
@@ -178,6 +174,11 @@ makeInstaller = function (options) {
         // Whether previousPromise was resolved or rejected, carry on with
         // the installation regardless.
         return previousPromise.then(both, both);
+
+      }, function (error) {
+        // Fixes https://github.com/meteor/meteor/issues/10182.
+        clearPending();
+        throw error;
       });
     });
   };
@@ -185,11 +186,11 @@ makeInstaller = function (options) {
   install.Module = Module;
 
   function getOwn(obj, key) {
-    return hasOwn.call(obj, key) && obj[key];
+    return strictHasOwn(obj, key) && obj[key];
   }
 
   function isObject(value) {
-    return typeof value === "object" && value !== null;
+    return value !== null && typeof value === "object";
   }
 
   function isFunction(value) {
@@ -204,40 +205,46 @@ makeInstaller = function (options) {
     return new Error("Cannot find module '" + id + "'");
   }
 
-  function makeRequire(file) {
-    function require(id) {
-      var result = fileResolve(file, id);
-      if (result) {
-        return fileEvaluate(result, file.module);
-      }
+  Module.prototype.resolve = function (id) {
+    var file = fileResolve(filesByModuleId[this.id], id);
+    if (file) return file.module.id;
+    var error = makeMissingError(id);
+    if (fallback && isFunction(fallback.resolve)) {
+      return fallback.resolve(id, this.id, error);
+    }
+    throw error;
+  };
 
-      var error = makeMissingError(id);
-
-      if (isFunction(fallback)) {
-        return fallback(
-          id, // The missing module identifier.
-          file.module.id, // The path of the requiring file.
-          error // The error we would have thrown.
-        );
-      }
-
-      throw error;
+  Module.prototype.require = function require(id) {
+    var result = fileResolve(filesByModuleId[this.id], id);
+    if (result) {
+      return fileEvaluate(result, this);
     }
 
-    if (isFunction(wrapRequire)) {
-      require = wrapRequire(require, file.module);
+    var error = makeMissingError(id);
+
+    if (isFunction(fallback)) {
+      return fallback(
+        id, // The missing module identifier.
+        this.id, // ID of the parent module.
+        error // The error we would have thrown.
+      );
+    }
+
+    throw error;
+  };
+
+  function makeRequire(file) {
+    var module = file.module;
+
+    function require(id) {
+      return module.require(id);
     }
 
     require.extensions = fileGetExtensions(file).slice(0);
 
-    require.resolve = function (id) {
-      var f = fileResolve(file, id);
-      if (f) return f.module.id;
-      var error = makeMissingError(id);
-      if (fallback && isFunction(fallback.resolve)) {
-        return fallback.resolve(id, file.module.id, error);
-      }
-      throw error;
+    require.resolve = function resolve(id) {
+      return module.resolve(id);
     };
 
     return require;
@@ -284,7 +291,7 @@ makeInstaller = function (options) {
 
   function fileEvaluate(file, parentModule) {
     var module = file.module;
-    if (! hasOwn.call(module, "exports")) {
+    if (! strictHasOwn(module, "exports")) {
       var contents = file.contents;
       if (! contents) {
         // If this file was installed with array notation, and the array
@@ -309,19 +316,14 @@ makeInstaller = function (options) {
         }
       }
 
-      // If a Module.prototype.useNode method is defined, give it a chance
-      // to define module.exports based on module.id using Node.
-      if (! isFunction(module.useNode) ||
-          ! module.useNode()) {
-        contents(
-          module.require = module.require || makeRequire(file),
-          // If the file had a .stub, reuse the same object for exports.
-          module.exports = file.stub || {},
-          module,
-          file.module.id,
-          file.parent.module.id
-        );
-      }
+      contents(
+        makeRequire(file),
+        // If the file had a .stub, reuse the same object for exports.
+        module.exports = file.stub || {},
+        module,
+        file.module.id,
+        file.parent.module.id
+      );
 
       module.loaded = true;
     }
@@ -499,17 +501,17 @@ makeInstaller = function (options) {
             mainFields.some(function (name) {
               return isString(main = pkg[name]);
             })) {
-          recordChild(parentModule, pkgJsonFile);
-
           // The "main" field of package.json does not have to begin with
           // ./ to be considered relative, so first we try simply
           // appending it to the directory path before falling back to a
           // full fileResolve, which might return a package from a
           // node_modules directory.
-          file = fileAppendId(file, main, extensions) ||
+          var mainFile = fileAppendId(file, main, extensions) ||
             fileResolve(file, main, parentModule, seenDirFiles);
 
-          if (file) {
+          if (mainFile) {
+            file = mainFile;
+            recordChild(parentModule, pkgJsonFile);
             // The fileAppendId call above may have returned a directory,
             // so continue the loop to make sure we resolve it to a
             // non-directory file.
@@ -523,10 +525,10 @@ makeInstaller = function (options) {
       // consider is that this directory contains an `index.js` module.
       // This assignment almost always terminates the while loop, because
       // there's very little chance `fileIsDirectory(file)` will be true
-      // for the result of `fileAppendIdPart(file, "index.js")`. However,
-      // in principle it is remotely possible that a file called
-      // `index.js` could be a directory instead of a file.
-      file = fileAppendIdPart(file, "index.js");
+      // for `fileAppendIdPart(file, "index", extensions)`. However, in
+      // principle it is remotely possible that a file called `index.js`
+      // could be a directory instead of a file.
+      file = fileAppendIdPart(file, "index", extensions);
     }
 
     if (file && isString(file.contents)) {
@@ -539,18 +541,11 @@ makeInstaller = function (options) {
   };
 
   function nodeModulesLookup(file, id, extensions) {
-    if (isFunction(override)) {
-      id = override(id, file.module.id);
+    for (var resolved; file && ! resolved; file = file.parent) {
+      resolved = fileIsDirectory(file) &&
+        fileAppendId(file, "node_modules/" + id, extensions);
     }
-
-    if (isString(id)) {
-      for (var resolved; file && ! resolved; file = file.parent) {
-        resolved = fileIsDirectory(file) &&
-          fileAppendId(file, "node_modules/" + id, extensions);
-      }
-
-      return resolved;
-    }
+    return resolved;
   }
 
   return install;

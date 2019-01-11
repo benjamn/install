@@ -4,6 +4,7 @@
     "email": "bn@cs.stanford.edu"
   },
   "name": "install",
+  "version": "0.12.2",
   "description": "Minimal JavaScript module loader",
   "keywords": [
     "modules",
@@ -15,7 +16,6 @@
     "packager",
     "install"
   ],
-  "version": "0.10.1",
   "license": "MIT",
   "homepage": "http://github.com/benjamn/install",
   "repository": {
@@ -29,10 +29,10 @@
     "test": "mocha --reporter spec --full-trace test/run.js"
   },
   "devDependencies": {
-    "docco": "^0.7.0",
-    "mocha": "^3.2.0",
-    "uglify-js": "^3.0.12",
-    "reify": "^0.11.20"
+    "docco": "^0.8.0",
+    "mocha": "^5.0.0",
+    "reify": "^0.18.1",
+    "terser": "^3.10.0"
   },
   "license": "MIT",
   "engines": {

@@ -30,22 +30,21 @@ var install = require("install").makeInstaller({
   // identifiers if they do not exactly match an installed module.
   extensions: [".js", ".json"],
 
-  // If defined, the options.onInstall function will be called any time
-  // new modules are installed.
-  onInstall,
-
-  // If defined, the options.override function will be called before
-  // looking up any top-level package identifiers in node_modules
-  // directories. It can return either a string to provide an alternate
-  // package identifier or a non-string value to prevent the lookup from
-  // proceeding.
-  override,
-
   // If defined, the options.fallback function will be called when no
   // installed module is found for a required module identifier. Often
   // options.fallback will be implemented in terms of the native Node
   // require function, which has the ability to load binary modules.
-  fallback
+  fallback,
+
+  // Boolean flag indicating whether the installed code will be running in
+  // a web browser.
+  browser,
+
+  // List of fields to look for in package.json files to determine the
+  // main entry module of the package. The first field listed here whose
+  // value is a string will be used to resolve the entry module. Defaults
+  // to just ["main"], or ["browser", "main"] if options.browser is true.
+  mainFields: ["browser", "main"],
 });
 ```
 
@@ -54,7 +53,7 @@ objects and functions to the `install` function:
 
 ```js
 var require = install({
-  "main.js": function (require, exports, module) {
+  "main.js"(require, exports, module) {
     // On the client, the "assert" module should be install-ed just like
     // any other module. On the server, since "assert" is a built-in Node
     // module, it may make sense to let the options.fallback function
@@ -76,13 +75,13 @@ var require = install({
       // If package.json is not defined, a module called "index.js" will
       // be used as the main entry point for the package. Otherwise the
       // exports.main property will identify the entry point.
-      "package.json": function (require, exports, module) {
+      "package.json"(require, exports, module) {
         exports.name = "package";
         exports.version = "0.1.0";
         exports.main = "entry.js";
       },
 
-      "entry.js": function (require, exports, module) {
+      "entry.js"(require, exports, module) {
         exports.name = module.id;
       }
     }
@@ -103,6 +102,22 @@ This is the "root" `require` function returned by the `install`
 function. If you're using the `install` package in a CommonJS environment
 like Node, be careful that you don't overwrite the `require` function
 provided by that system.
+
+If you need to change the behavior of the `module` object that each module
+function receives as its third parameter, the shared `Module` constructor
+is exposed as a property of the `install` function returned by the
+`makeInstaller` factory:
+
+```js
+var install = makeInstaller(options);
+var proto = install.Module.prototype;
+
+// Wrap all Module.prototype.require calls with some sort of logging.
+proto.require = wrapWithLogging(proto.require);
+
+// Add a new method available to all modules via module.newMethod(...).
+proto.newMethod = function () {...};
+```
 
 Many more examples of how to use the `install` package can be found in the
 [tests](https://github.com/benjamn/install/blob/master/test/run.js).

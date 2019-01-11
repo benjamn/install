@@ -1,10 +1,10 @@
 var assert = require("assert");
-var main = require("../install.js");
+var makeInstaller = require("../install.js").makeInstaller;
 var reify = require("reify/lib/runtime").enable;
 
 describe("install", function () {
   it("binds this to global", function () {
-    main.makeInstaller()({
+    makeInstaller()({
       "index.js": function () {
         assert.strictEqual(
           Object.prototype.toString.call(this),
@@ -15,7 +15,7 @@ describe("install", function () {
   });
 
   it("permits synchronous require", function () {
-    var install = main.makeInstaller();
+    var install = makeInstaller();
 
     var require = install({
       "foo.js": function (require, exports, module) {
@@ -52,7 +52,7 @@ describe("install", function () {
   });
 
   it("supports a variety of relative identifiers", function () {
-    var install = main.makeInstaller();
+    var install = makeInstaller();
     var value = {};
 
     function n(require, exports) {
@@ -85,7 +85,7 @@ describe("install", function () {
   });
 
   it("supports global modules", function () {
-    var install = main.makeInstaller();
+    var install = makeInstaller();
 
     install({
       node_modules: {
@@ -133,7 +133,7 @@ describe("install", function () {
     var obj = {};
     var fun = function () {};
 
-    var require = main.makeInstaller()({
+    var require = makeInstaller()({
       "object": function (r, e, module) {
         module.exports = obj;
       },
@@ -166,7 +166,7 @@ describe("install", function () {
   it("copes with long dependency chains", function () {
     var n = 500;
     var count = 0;
-    var install = main.makeInstaller({
+    var install = makeInstaller({
       defer: setImmediate
     });
 
@@ -198,7 +198,7 @@ describe("install", function () {
   });
 
   it("prefers fuzzy files to exact directories", function () {
-    var install = main.makeInstaller();
+    var install = makeInstaller();
     var require = install({
       "node_modules": {
         "foo.js": function (r, exports) {
@@ -229,7 +229,7 @@ describe("install", function () {
   it("supports options.fallback", function (done) {
     var unknown = {};
 
-    var install = main.makeInstaller({
+    var install = makeInstaller({
       fallback: function (id, parentId, error) {
         assert.strictEqual(id, "unknown-module");
         assert.strictEqual(parentId, "/foo/bar/parent.js");
@@ -257,7 +257,7 @@ describe("install", function () {
   });
 
   it("supports options.fallback.resolve", function () {
-    var install = main.makeInstaller({
+    var install = makeInstaller({
       fallback: {
         resolve: function (id, parentId, error) {
           if (id === "assert") return id;
@@ -285,7 +285,7 @@ describe("install", function () {
   });
 
   it("supports symbolic links", function () {
-    var install = main.makeInstaller();
+    var install = makeInstaller();
     var require = install({
       a: "./dir/c",
       dir: {
@@ -339,7 +339,7 @@ describe("install", function () {
   });
 
   it("avoids circular package.json resolution chains", function () {
-    main.makeInstaller()({
+    makeInstaller()({
       // Module a imports package b, whose package.json file delegates to
       // package c, whose package.json file delegates to c's own
       // directory, which contains an index.js file symbolically linked
@@ -373,7 +373,7 @@ describe("install", function () {
   });
 
   it("provides __filename and __dirname", function (done) {
-    var require = main.makeInstaller()({
+    var require = makeInstaller()({
       a: {
         b: {
           "c.js": function (r, e, m, __filename, __dirname) {
@@ -395,7 +395,7 @@ describe("install", function () {
   });
 
   it("allows alternate extensions", function (done) {
-    main.makeInstaller()({
+    makeInstaller()({
       "a.js": function (require) {
         assert.strictEqual(require("./b").name, "/b.foo");
         assert.strictEqual(require("/b").name, "/b.foo");
@@ -410,84 +410,8 @@ describe("install", function () {
     })("./a");
   });
 
-  it("allows package overrides and fallbacks", function () {
-    var install = main.makeInstaller({
-      override: function (id, parentId) {
-        assert.strictEqual(parentId, "/parent.js");
-
-        var parts = id.split("/");
-
-        if (parts[0] === "forbidden") {
-          return false;
-        }
-
-        if (parts[0] === "overridden") {
-          parts[0] = "alternate";
-          return parts.join("/");
-        }
-
-        return id;
-      },
-
-      fallback: function (id, parentId, error) {
-        assert.strictEqual(id, "forbidden");
-        assert.strictEqual(parentId, "/parent.js");
-        throw error;
-      }
-    });
-
-    var require = install({
-      "parent.js": ["forbidden", "overridden", "alternate", function (require, exports, module) {
-        var error;
-        try {
-          require("forbidden");
-        } catch (e) {
-          error = e;
-        }
-        assert.ok(error instanceof Error);
-        assert.strictEqual(error.message, "Cannot find module 'forbidden'");
-
-        assert.strictEqual(
-          require("overridden").name,
-          "/node_modules/alternate/index.js"
-        );
-
-        assert.strictEqual(
-          require("overridden/index").name,
-          "/node_modules/alternate/index.js"
-        );
-
-        assert.strictEqual(
-          require("alternate").name,
-          "/node_modules/alternate/index.js"
-        );
-
-        assert.strictEqual(
-          require(module.id),
-          exports
-        );
-      }],
-
-      node_modules: {
-        "forbidden": {
-          "index.js": function () {
-            throw new Error("package should have been forbidden");
-          }
-        },
-
-        "alternate": {
-          "index.js": function (require, exports, module) {
-            exports.name = module.id;
-          }
-        }
-      }
-    });
-
-    require("./parent");
-  });
-
   it("allows global installation", function () {
-    var install = main.makeInstaller();
+    var install = makeInstaller();
 
     var require = install({
       node_modules: {
@@ -516,7 +440,7 @@ describe("install", function () {
   });
 
   it("supports module.parent", function (done) {
-    var install = main.makeInstaller();
+    var install = makeInstaller();
     var require = install({
       a: function (require, exports, module) {
         assert.strictEqual(module.parent.id, "/");
@@ -549,47 +473,17 @@ describe("install", function () {
     require("./a");
   });
 
-  it("respects Module.prototype.useNode", function () {
-    var install = main.makeInstaller();
-
-    install.Module.prototype.useNode = function () {
-      if (this.id.split("/").pop() === "b") {
-        assert.strictEqual(typeof this.exports, "undefined");
-        this.exports = {
-          usedNode: true
-        };
-        return true;
-      }
-    };
-
-    var require = install({
-      a: function (require, exports) {
-        exports.b = require("./b");
-      },
-
-      b: function (r, exports) {
-        exports.usedNode = false;
-      }
-    });
-
-    assert.strictEqual(require("./a").b.usedNode, true);
-    assert.strictEqual(require("./b").usedNode, true);
-    assert.strictEqual(require("./a").b, require("./b"));
-  });
-
   it("runs setters", function () {
-    var install = main.makeInstaller();
+    var install = makeInstaller();
     var markers = [];
     var require = install({
       a: function (r, exports, module) {
         exports.one = 1;
 
-        // Enable module.{importSync,export}.
+        // Enable module.link.
         reify(module);
 
-        (module.importSync ||
-         module.import
-        ).call(module, "./b", {
+        module.link("./b", {
           one: function (v) {
             markers.push("ab1", v);
           },
@@ -605,12 +499,10 @@ describe("install", function () {
       b: function (r, exports, module) {
         exports.one = 1;
 
-        // Enable module.{importSync,export}.
+        // Enable module.link.
         reify(module);
 
-        (module.importSync ||
-         module.import
-        ).call(module, "./a", {
+        module.link("./a", {
           one: function (v) {
             markers.push("ba1", v);
           },
@@ -630,6 +522,8 @@ describe("install", function () {
     });
 
     assert.deepEqual(markers, [
+      "ab1", void 0,
+      "ab2", void 0,
       "ba1", 1,
       "ba2", void 0,
       "ab1", 1,
@@ -638,29 +532,8 @@ describe("install", function () {
     ]);
   });
 
-  it("supports options.wrapRequire", function () {
-    main.makeInstaller({
-      wrapRequire: function (require, parent) {
-        assert.strictEqual(typeof require, "function");
-        assert.strictEqual(typeof parent, "object");
-        assert.strictEqual(typeof parent.id, "string");
-
-        function wrapper() {
-          return require.apply(this, arguments);
-        }
-
-        wrapper.parentId = parent.id;
-        return wrapper;
-      }
-    })({
-      a: function (require, exports, module) {
-        assert.strictEqual(require.parentId, module.id);
-      }
-    })("./a");
-  });
-
   it("supports options.browser", function () {
-    var require = main.makeInstaller({
+    var require = makeInstaller({
       browser: true
     })({
       a: function (require, exports, module) {
@@ -685,7 +558,7 @@ describe("install", function () {
 
   it("supports pkg.module", function () {
     function check(makeInstallerOptions) {
-      var require = main.makeInstaller(
+      var require = makeInstaller(
         makeInstallerOptions
       )({
         a: function (require, exports, module) {
@@ -756,7 +629,7 @@ describe("install", function () {
   });
 
   it("exposes require.extensions", function () {
-    var install = main.makeInstaller({
+    var install = makeInstaller({
       extensions: [".js", ".json", ".css"]
     });
 
@@ -1035,10 +908,6 @@ describe("install", function () {
 
   it("enforces ordering of module.prefetch promise resolution", function () {
     var install = makeInstaller();
-    var bResolve;
-    var bPromise = new Promise(function (resolve) {
-      bResolve = resolve;
-    });
 
     function exportName(r, exports, module) {
       exports.name = module.id;
@@ -1048,20 +917,12 @@ describe("install", function () {
     // though module.prefetch is called in the other order.
     install.fetch = function (ids) {
       var keys = Object.keys(ids);
-      assert.strictEqual(keys.length, 1);
-
-      if (keys[0] === "/a.js") {
-        return bPromise.then(function () {
-          return { "a.js": exportName };
-        });
-      }
-
-      if (keys[0] === "/b.js") {
-        bResolve({ "b.js": exportName });
-        return bPromise;
-      }
-
-      throw new Error("unreached");
+      assert.strictEqual(keys.length, 2);
+      var tree = {};
+      keys.forEach(function (key) {
+        tree[key.split("/").pop()] = exportName;
+      });
+      return tree;
     };
 
     var require = install({
@@ -1085,6 +946,93 @@ describe("install", function () {
     });
 
     return require("./main");
+  });
+
+  it("batches module.prefetch calls into one install.fetch call", function () {
+    var install = makeInstaller();
+    var fetchCallCount = 0;
+
+    install.fetch = function (ids) {
+      ++fetchCallCount;
+      assert.deepEqual(Object.keys(ids).sort(), [
+        "/a.js",
+        "/b.js",
+      ]);
+      return {};
+    };
+
+    var require = install({
+      "main.js": function (require, exports, module) {
+        exports.promise = Promise.all([
+          module.prefetch("./a"),
+          module.prefetch("./b")
+        ]);
+      },
+      "a.js": [],
+      "b.js": []
+    });
+
+    return require("./main").promise.then(function (ab) {
+      assert.strictEqual(fetchCallCount, 1);
+      assert.deepEqual(ab.sort(), [
+        "/a.js",
+        "/b.js",
+      ]);
+    });
+  });
+
+  it("supports retrying dynamic imports after failure", function () {
+    var install = makeInstaller();
+
+    var threw = false;
+    install.fetch = function (ids) {
+      if (! threw) {
+        threw = true;
+        debugger;
+        throw new Error("network failure, or something");
+      }
+
+      var tree = {};
+
+      Object.keys(ids).forEach(function (id) {
+        var info = ids[id];
+        assert.strictEqual(info.module.id, id);
+        addToTree(tree, id, function (r, exports, module) {
+          assert.strictEqual(module, info.module);
+          exports.name = module.id;
+        });
+      });
+
+      return tree;
+    };
+
+    var require = install({
+      "main.js": function (require, exports, module) {
+        exports.attempt = function (id) {
+          return module.prefetch(id);
+        };
+      },
+      "a.js": ["./c", "./b"],
+      "b.js": ["./a", "./c"],
+      "c.js": ["./a", "./b"]
+    });
+
+    var attempt = require("./main").attempt;
+
+    return attempt("./a").then(function () {
+      throw new Error("should have failed");
+    }, function (error) {
+      assert.strictEqual(threw, true);
+      assert.strictEqual(
+        error.message,
+        "network failure, or something"
+      );
+
+      return attempt("./c").then(function (id) {
+        assert.strictEqual(id, "/c.js");
+        assert.strictEqual(require("./c").name, id);
+      });
+    });
   });
 
   it("respects module.exports before file.contents", function () {
@@ -1116,5 +1064,81 @@ describe("install", function () {
     });
 
     return require("./a").promise;
+  });
+
+  it('falls back to index.js when package.json "main" missing', function () {
+    var install = makeInstaller();
+    var require = install({
+      "main.js"(require, exports, module) {
+        exports.result = require("pkg");
+      },
+
+      node_modules: {
+        pkg: {
+          "package.json"(require, exports, module) {
+            // Since this file is missing, the root index.js should be used.
+            exports.main = "dist/index.js";
+          },
+
+          "index.js"(require, exports, module) {
+            exports.isRoot = true;
+            exports.id = module.id;
+            exports.oyez = require("./dist/oyez.js");
+          },
+
+          dist: {
+            "oyez.js"(require, exports, module) {
+              exports.id = module.id;
+            }
+          }
+        }
+      }
+    });
+
+    var result = require("./main").result;
+    assert.strictEqual(result.isRoot, true);
+    assert.strictEqual(result.id, "/node_modules/pkg/index.js");
+    assert.strictEqual(result.oyez.id, "/node_modules/pkg/dist/oyez.js");
+  });
+
+  it("tolerates index.* modules with alternate extensions", function () {
+    var extensions = [".js", ".json"];
+    var require = makeInstaller({
+      extensions,
+    })({
+      "main.js"(require, exports, module) {
+        exports.json = require("./jsonDir");
+      },
+
+      jsonDir: {
+        "index.json"(require, exports, module) {
+          exports.name = module.id;
+        }
+      },
+
+      tsxDir: {
+        "index.tsx"(require, exports, module) {
+          exports.name = module.id;
+        }
+      }
+    });
+
+    var main = require("./main");
+    assert.strictEqual(main.json.name, "/jsonDir/index.json");
+
+    var threw = false;
+    try {
+      require("/tsxDir");
+    } catch (e) {
+      threw = true;
+      assert.strictEqual(e.message, "Cannot find module '/tsxDir'");
+    }
+    assert.strictEqual(threw, true);
+
+    extensions.push(".tsx");
+    assert.strictEqual(
+      require("/tsxDir").name,
+      "/tsxDir/index.tsx"
+    );
   });
 });
