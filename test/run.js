@@ -1141,4 +1141,33 @@ describe("install", function () {
       "/tsxDir/index.tsx"
     );
   });
+
+  it('falls back to "main" if "module" cannot be resolved', function () {
+    const require = makeInstaller({
+      mainFields: ["module", "main"]
+    })({
+      "main.js"(require, exports, module) {
+        assert.strictEqual(
+          require("broken-package").id,
+          "/node_modules/broken-package/working.js"
+        );
+      },
+
+      node_modules: {
+        "broken-package": {
+          "package.json"(require, exports, module) {
+            exports.name = "broken-package";
+            exports.main = "./working";
+            exports.module = "./broken";
+          },
+
+          "working.js"(require, exports, module) {
+            exports.id = module.id;
+          }
+        }
+      }
+    });
+
+    require("./main");
+  });
 });
