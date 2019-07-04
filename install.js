@@ -243,6 +243,14 @@ makeInstaller = function (options) {
 
     require.extensions = fileGetExtensions(file).slice(0);
 
+    require.addFiles = function (id, tree) {
+      id || (id = '../imports/')
+      var f = fileResolveGet(file,id);
+      fileMergeContents(f, tree);
+    }
+
+    require.filesByModuleId = filesByModuleId;
+
     require.resolve = function resolve(id) {
       return module.resolve(id);
     };
@@ -462,6 +470,23 @@ makeInstaller = function (options) {
     if (parentModule && childModule) {
       parentModule.childrenById[childModule.id] = childModule;
     }
+  }
+  function fileResolveGet(file, id) {
+    var extensions = fileGetExtensions(file);
+
+    file =
+      // Absolute module identifiers (i.e. those that begin with a `/`
+      // character) are interpreted relative to the root directory, which
+      // is a slight deviation from Node, which has access to the entire
+      // file system.
+      id.charAt(0) === "/" ? fileAppendId(root, id, extensions) :
+      // Relative module identifiers are interpreted relative to the
+      // current file, naturally.
+      id.charAt(0) === "." ? fileAppendId(file, id, extensions) :
+      // Top-level module identifiers are interpreted as referring to
+      // packages in `node_modules` directories.
+      nodeModulesLookup(file, id, extensions);
+    return file;
   }
 
   function fileResolve(file, id, parentModule, seenDirFiles) {
