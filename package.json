@@ -34,7 +34,6 @@
     "reify": "^0.18.1",
     "terser": "^3.16.0"
   },
-  "license": "MIT",
   "engines": {
     "node": ">= 0.10"
   }
